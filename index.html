@@ -856,7 +856,7 @@ function gasCall(action, params, onSuccess, onError) {
   fetch(GAS_URL, {
     method: 'POST',
     redirect: 'follow',
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ action: action, params: (params !== undefined ? params : null) })
   })
   .then(function(r) { return r.json(); })
