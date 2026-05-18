@@ -851,14 +851,13 @@ body {
 // ═══════════════════════════════════════
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxz3Qaupa6OOY5EWKIJEJfKOId9ZoEBVI2R0k0Dh9xvETdm9y3yAfhKLDTNNzcmrWUHtQ/exec';
 
-// Helper: panggil GAS Web App via fetch
+// Helper: panggil GAS Web App via GET (lebih reliable untuk CORS)
 function gasCall(action, params, onSuccess, onError) {
-  fetch(GAS_URL, {
-    method: 'POST',
-    redirect: 'follow',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: action, params: (params !== undefined ? params : null) })
-  })
+  var url = GAS_URL + '?action=' + encodeURIComponent(action);
+  if (params !== null && params !== undefined) {
+    url += '&params=' + encodeURIComponent(JSON.stringify(params));
+  }
+  fetch(url, { redirect: 'follow' })
   .then(function(r) { return r.json(); })
   .then(function(data) { if (onSuccess) onSuccess(data); })
   .catch(function(err) { if (onError) onError(err); });
