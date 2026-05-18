@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BinLoc">
+<link rel="apple-touch-icon" href="icon-512.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
 <meta name="theme-color" content="#0f1117">
 <link rel="manifest" href="manifest.json">
 <title>BinLoc Operator</title>
@@ -517,6 +521,74 @@ body {
       <div class="card-label" style="color:var(--accent3)">Cari Posisi Barang</div>
       <div class="card-desc">Cari bin loc berdasarkan SKU / Prodate / Quotation</div>
     </div>
+    <div class="tipe-card" style="border-color:#60a5fa40;background:#60a5fa08;" onclick="showScreen('screen-riwayat')">
+      <div class="card-icon">📋</div>
+      <div class="card-label" style="color:#60a5fa">Riwayat Movement</div>
+      <div class="card-desc">History transaksi masuk / keluar / pindah</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN: RIWAYAT MOVEMENT
+═══════════════════════════════ -->
+<div class="screen" id="screen-riwayat">
+  <div class="app-header">
+    <div class="back-btn" onclick="goHome()">←</div>
+    <div class="title-group">
+      <h2>Riwayat Movement</h2>
+      <div class="sub">History transaksi bin loc</div>
+    </div>
+  </div>
+  <div class="screen-body" style="padding:16px;">
+
+    <!-- Filter -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Dari Tanggal</div>
+          <input type="date" id="rw-dari" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Sampai Tanggal</div>
+          <input type="date" id="rw-sampai" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Bin Loc</div>
+          <input type="text" id="rw-bin" placeholder="cth: A-01" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">SKU / Nama</div>
+          <input type="text" id="rw-sku" placeholder="kode atau nama..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Tipe</div>
+          <select id="rw-tipe" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+            <option value="">Semua</option>
+            <option value="LOKAL">Lokal</option>
+            <option value="EKSPOR">Ekspor</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Aksi</div>
+          <select id="rw-aksi" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+            <option value="">Semua</option>
+            <option value="MASUK">Masuk</option>
+            <option value="KELUAR">Keluar</option>
+            <option value="PINDAH">Pindah</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="loadRiwayat()" style="width:100%;padding:10px;background:var(--accent);color:#0f1117;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--mono);">🔍 Cari</button>
+    </div>
+
+    <!-- Results -->
+    <div id="rw-info" style="font-size:11px;color:var(--muted);margin-bottom:8px;"></div>
+    <div id="rw-results"></div>
   </div>
 </div>
 
@@ -939,6 +1011,10 @@ function showScreen(id) {
     s.classList.remove('active');
   });
   document.getElementById(id).classList.add('active');
+  if (id === 'screen-riwayat') {
+    initRiwayat();
+    loadRiwayat();
+  }
 }
 
 function goBack(targetScreen) {
@@ -2074,6 +2150,101 @@ function renderSearchResults(data) {
 
   wrap.style.display = 'block';
   empty.style.display = 'none';
+}
+
+// ═══════════════════════════════════════
+// RIWAYAT MOVEMENT
+// ═══════════════════════════════════════
+function initRiwayat() {
+  // Set default tanggal: hari ini
+  var today = new Date();
+  var yyyy  = today.getFullYear();
+  var mm    = String(today.getMonth()+1).padStart(2,'0');
+  var dd    = String(today.getDate()).padStart(2,'0');
+  var todayStr = yyyy+'-'+mm+'-'+dd;
+
+  // Default dari: 7 hari lalu
+  var from = new Date(today);
+  from.setDate(from.getDate() - 7);
+  var fy = from.getFullYear();
+  var fm = String(from.getMonth()+1).padStart(2,'0');
+  var fd = String(from.getDate()).padStart(2,'0');
+
+  document.getElementById('rw-dari').value   = fy+'-'+fm+'-'+fd;
+  document.getElementById('rw-sampai').value = todayStr;
+}
+
+function loadRiwayat() {
+  var dari   = document.getElementById('rw-dari').value;
+  var sampai = document.getElementById('rw-sampai').value;
+  var bin    = document.getElementById('rw-bin').value.trim();
+  var sku    = document.getElementById('rw-sku').value.trim();
+  var tipe   = document.getElementById('rw-tipe').value;
+  var aksi   = document.getElementById('rw-aksi').value;
+
+  document.getElementById('rw-results').innerHTML =
+    '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">⏳ Memuat...</div>';
+  document.getElementById('rw-info').textContent = '';
+
+  var filters = { dari: dari, sampai: sampai, bin: bin, sku: sku, tipe: tipe, aksi: aksi };
+
+  gasCall('getBinMovement', filters,
+    function(data) { renderRiwayat(data || []); },
+    function(err)  {
+      document.getElementById('rw-results').innerHTML =
+        '<div style="color:var(--accent2);font-size:13px;padding:20px;">❌ ' + ((err&&err.message)||'Gagal memuat') + '</div>';
+    }
+  );
+}
+
+function renderRiwayat(data) {
+  var info = document.getElementById('rw-info');
+  var res  = document.getElementById('rw-results');
+
+  if (!data.length) {
+    info.textContent = '';
+    res.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px;">Tidak ada data</div>';
+    return;
+  }
+
+  info.textContent = 'Menampilkan ' + data.length + ' transaksi';
+
+  var aksiColor = { MASUK: '#4fffb0', KELUAR: '#ff6b6b', PINDAH: '#ffd166' };
+
+  res.innerHTML = data.map(function(r) {
+    var ac  = aksiColor[r.aksi] || '#aaa';
+    var plt = Number(r.pallet)  || 0;
+    var pec = Number(r.pecahan) || 0;
+    var ktn = Number(r.karton)  || 0;
+    var eff = plt + (pec > 0 ? 1 : 0);
+    var std = plt > 0 && ktn > 0 ? Math.round((ktn - pec) / plt) : 0;
+    var ktnStr = std > 0
+      ? plt+'p@'+std+(pec>0?' + '+pec:'')+' ('+ktn+')'
+      : (ktn > 0 ? ktn+' ktn' : plt+' plt');
+    var binTujuan = r.binTujuan ? ' → <span style="color:var(--accent3)">' + r.binTujuan + '</span>' : '';
+    var qt = r.quotation && r.quotation !== '0' ? '<span style="background:#a78bfa20;color:#a78bfa;border:1px solid #a78bfa40;border-radius:4px;padding:1px 6px;font-size:10px;">'+r.quotation+'</span>' : '';
+
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+      + '<span style="font-size:10px;color:var(--muted);">' + r.timestamp + '</span>'
+      + '<span style="background:'+ac+'20;color:'+ac+';border:1px solid '+ac+'40;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;">' + r.aksi + '</span>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+      + '<span style="font-size:14px;font-weight:700;color:var(--accent);">' + r.binLoc + '</span>'
+      + binTujuan
+      + '<span style="font-size:10px;color:var(--muted);margin-left:auto;">' + (r.tipe||'') + '</span>'
+      + '</div>'
+      + '<div style="font-size:11px;color:#60a5fa;margin-bottom:2px;">' + r.skuKode + '</div>'
+      + '<div style="font-size:12px;color:var(--text);margin-bottom:6px;">' + r.skuNama + '</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">'
+      + '<span style="background:#4fffb020;color:#4fffb0;border:1px solid #4fffb040;border-radius:4px;padding:1px 6px;font-size:10px;">' + ktnStr + '</span>'
+      + (r.prodate ? '<span style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:10px;">' + r.prodate + '</span>' : '')
+      + qt
+      + (r.operator ? '<span style="font-size:10px;color:var(--muted);margin-left:auto;">👤 '+r.operator+'</span>' : '')
+      + '</div>'
+      + (r.keterangan ? '<div style="font-size:10px;color:var(--muted);margin-top:4px;font-style:italic;">'+r.keterangan+'</div>' : '')
+      + '</div>';
+  }).join('');
 }
 
 // ═══════════════════════════════════════
