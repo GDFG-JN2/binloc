@@ -925,11 +925,12 @@ var GAS_URL = 'https://crimson-voice-bce5.kemalrifael71.workers.dev';
 
 // Helper: panggil GAS via Cloudflare Worker (support semua browser)
 function gasCall(action, params, onSuccess, onError) {
-  var url = GAS_URL + '?action=' + encodeURIComponent(action);
+  var url = GAS_URL + '?action=' + encodeURIComponent(action)
+          + '&_t=' + Date.now(); // cache busting
   if (params !== null && params !== undefined) {
     url += '&params=' + encodeURIComponent(JSON.stringify(params));
   }
-  fetch(url, { redirect: 'follow' })
+  fetch(url, { redirect: 'follow', cache: 'no-store' })
   .then(function(r) { return r.json(); })
   .then(function(data) { if (onSuccess) onSuccess(data); })
   .catch(function(err) { if (onError) onError(err); });
