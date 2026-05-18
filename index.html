@@ -25,7 +25,7 @@
   --accent2:  #ef4444;
   --accent3:  #f59e0b;
   --text:     #1e2533;
-  --muted:    #6b7280;
+  --muted:    #4b5563;
   --lokal:    #16a34a;
   --ekspor:   #7c3aed;
   --radius:   14px;
@@ -430,23 +430,23 @@ input:focus, select:focus {
 .peta-legend{ display:flex; gap:10px; flex-wrap:wrap; padding:10px 16px; background:var(--surface2); border-radius:10px; margin:12px 0 10px; align-items:center; }
 .peta-legend-item{ display:flex; align-items:center; gap:5px; font-size:10px; font-weight:700; color:var(--muted); }
 .peta-legend-dot{ width:13px; height:13px; border-radius:3px; flex-shrink:0; }
-.peta-map-wrap{ display:flex; flex-direction:column; gap:0; min-width:max-content; width:max-content; background:var(--surface2); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
-.peta-num-hdr{ display:flex; align-items:center; background:#1a2535; border-bottom:2px solid var(--border); padding:4px 6px 4px 38px; gap:2px; }
-.peta-num-hdr span{ width:26px; text-align:center; font-size:8px; font-weight:700; color:#4a5568; flex-shrink:0; }
-.peta-num-hdr span.tick{ color:#718096; }
-.peta-row-group{ display:flex; flex-direction:column; gap:2px; padding:5px 6px; border-bottom:1px solid var(--border); }
+.peta-map-wrap{ display:flex; flex-direction:column; gap:0; min-width:max-content; width:max-content; background:#f8fafc; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.peta-num-hdr{ display:flex; align-items:center; background:#1e2533; border-bottom:2px solid #d1d9e0; padding:4px 6px 4px 38px; gap:2px; }
+.peta-num-hdr span{ width:26px; text-align:center; font-size:8px; font-weight:700; color:#94a3b8; flex-shrink:0; }
+.peta-num-hdr span.tick{ color:#cbd5e1; }
+.peta-row-group{ display:flex; flex-direction:column; gap:2px; padding:5px 6px; border-bottom:1px solid #e2e8f0; }
 .peta-row-group:last-child{ border-bottom:none; }
-.peta-gap{ height:0; border-bottom:5px solid #1a2535; }
+.peta-gap{ height:0; border-bottom:5px solid #1e2533; }
 .peta-row{ display:flex; align-items:center; gap:2px; }
-.peta-row-lbl{ width:28px; font-size:10px; font-weight:800; color:#3b82f6; flex-shrink:0; }
+.peta-row-lbl{ width:28px; font-size:10px; font-weight:800; color:#2563eb; flex-shrink:0; }
 .peta-cell{ width:26px; height:20px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:8.5px; font-weight:700; cursor:pointer; border:1px solid rgba(0,0,0,.2); flex-shrink:0; transition:transform .1s; }
 .peta-cell:active{ transform:scale(1.2); }
 .peta-void{ width:26px; height:20px; flex-shrink:0; }
-.peta-empty  { background:#1e2a3a; color:#4a5568; border-color:#2d3748; }
-.peta-green  { background:#1a4731; color:#16a34a; border-color:#276749; }
-.peta-yellow { background:#44370a; color:#f6e05e; border-color:#744210; }
-.peta-orange { background:#4a2510; color:#fbd38d; border-color:#7b341e; }
-.peta-red    { background:#4a1515; color:#feb2b2; border-color:#742a2a; }
+.peta-empty  { background:#e2e8f0; color:#94a3b8; border-color:#cbd5e1; }
+.peta-green  { background:#bbf7d0; color:#15803d; border-color:#86efac; }
+.peta-yellow { background:#fef08a; color:#854d0e; border-color:#fde047; }
+.peta-orange { background:#fed7aa; color:#9a3412; border-color:#fdba74; }
+.peta-red    { background:#fecaca; color:#991b1b; border-color:#fca5a5; }
 /* popup peta */
 #petaOverlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9500; align-items:flex-end; justify-content:center; }
 #petaOverlay.show{ display:flex; }
