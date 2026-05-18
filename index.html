@@ -879,14 +879,14 @@ function gasCall(action, params, onSuccess, onError) {
     if (onError) onError(new Error('Gagal menghubungi server'));
   };
 
-  // Timeout 15 detik
+  // Timeout 30 detik
   setTimeout(function() {
     if (done) return;
     done = true;
     delete window[cbName];
     if (script.parentNode) script.parentNode.removeChild(script);
     if (onError) onError(new Error('Timeout'));
-  }, 15000);
+  }, 30000);
 
   script.src = url;
   document.head.appendChild(script);
@@ -1094,7 +1094,7 @@ function loadLainlainList() {
   document.getElementById('lainlain-new-wrap').style.display = 'none';
   document.getElementById('bin-loc-custom').value = '';
 
-  gasCall('getBinCurrent', null,
+  gasCall('getBinCurrentLite', null,
     function(data) { renderLainlainList(data || []); },
     function()     { renderLainlainList([]); }
   );
@@ -1847,7 +1847,7 @@ function petaLoadMap() {
   if (_petaLoaded && _petaData) { petaRenderMap(_petaData); return; }
   document.getElementById('peta-map-wrap').innerHTML =
     '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px"><div style="font-size:28px;margin-bottom:8px">⏳</div>Memuat data...</div>';
-  gasCall('getBinCurrent', null,
+  gasCall('getBinCurrentLite', null,
     function(data) {
       _petaData   = data || [];
       _petaLoaded = true;
