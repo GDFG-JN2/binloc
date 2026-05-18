@@ -461,7 +461,7 @@ input:focus, select:focus {
 .peta-pop-row:last-child{ border-bottom:none; }
 .peta-pop-sku{ font-weight:800; color:#3b82f6; min-width:80px; }
 .peta-pop-nama{ color:var(--text); flex:1; font-size:11px; }
-.peta-pop-plt{ font-weight:800; color:#f6e05e; white-space:nowrap; }
+.peta-pop-plt{ font-weight:800; color:#2563eb; white-space:nowrap; }
 .peta-pop-prodate{ color:var(--muted); font-size:10px; white-space:nowrap; }
 .result-card {
   background: var(--surface2);
@@ -1986,7 +1986,7 @@ function petaRenderMap(rawData) {
                 + (info.items.length > 2 ? '…' : '');
       llHtml += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;cursor:pointer" onclick="petaShowPopup(\''+escHtml(loc)+'\')">'
               + '<div style="font-size:12px;font-weight:800;color:#3b82f6">📍 '+escHtml(loc)+'</div>'
-              + '<div style="font-size:13px;font-weight:800;color:#f6e05e;margin:2px 0">'+info.used+' plt efektif</div>'
+              + '<div style="font-size:13px;font-weight:800;color:#2563eb;margin:2px 0">'+info.used+' plt efektif</div>'
               + '<div style="font-size:10px;color:var(--muted)">'+info.items.length+' SKU · '+escHtml(names)+'</div>'
               + '</div>';
     });
