@@ -421,7 +421,7 @@ input:focus, select:focus {
   font-family: var(--mono); font-size: 13px; cursor: pointer;
   color: var(--muted); transition: all .15s;
 }
-.search-tipe-btn.active { border-color: var(--accent3); background: #f59e0b20; color: var(--accent3); }
+.search-tipe-btn.active { border-color: #2563eb; background: #2563eb15; color: #2563eb; font-weight:700; }
 .search-tipe-btn.peta-active { border-color: #3b82f6; background: #3b82f620; color: #3b82f6; }
 
 /* ── PETA SEBARAN PWA ── */
@@ -484,7 +484,7 @@ input:focus, select:focus {
   font-size: 11px; padding: 2px 8px; border-radius: 10px;
   background: var(--surface); border: 1px solid var(--border); color: var(--muted);
 }
-.result-card .rc-tag.pallet { color: var(--accent3); border-color: #f59e0b40; background: #f59e0b10; }
+.result-card .rc-tag.pallet { color: #1d4ed8; border-color: #2563eb40; background: #2563eb10; font-weight:700; }
 .result-card .rc-tag.tipe.lokal  { color: var(--lokal);  border-color: #2563eb40; background: #2563eb10; }
 .result-card .rc-tag.tipe.ekspor { color: var(--ekspor); border-color: #7c3aed40; background: #7c3aed10; }
 
@@ -881,10 +881,10 @@ input:focus, select:focus {
       <!-- STD info -->
       <div id="std-info" style="display:none;font-size:11px;color:var(--muted);margin-bottom:8px;padding:6px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
         <span id="std-info-text"></span>
-        <span id="stok-info" style="display:none;margin-left:12px;color:var(--accent3);font-weight:700"></span>
+        <span id="stok-info" style="display:none;margin-left:12px;color:#1d4ed8;font-weight:700"></span>
       </div>
       <!-- Warning STD tidak ada -->
-      <div id="std-warn" style="display:none;font-size:11px;color:var(--accent3);margin-bottom:12px;padding:8px 12px;background:#f59e0b15;border-radius:8px;border:1px solid #f59e0b40">
+      <div id="std-warn" style="display:none;font-size:11px;color:#92400e;margin-bottom:12px;padding:8px 12px;background:#fef3c7;border-radius:8px;border:1px solid #fde68a">
         ⚠️ STD tidak ditemukan untuk barang ini — Total Karton tidak dihitung
       </div>
       <!-- Warning pallet melebihi stok -->
@@ -1035,6 +1035,8 @@ function loadSkuData() { /* handled in init */ }
 // ═══════════════════════════════════════
 // SCREEN NAVIGATION
 // ═══════════════════════════════════════
+var _screenHistory = [];
+
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(function(s) {
     s.classList.remove('active');
@@ -1044,7 +1046,30 @@ function showScreen(id) {
     initRiwayat();
     loadRiwayat();
   }
+  // Push state for hardware back button
+  history.pushState({ screen: id }, '', '');
 }
+
+window.addEventListener('popstate', function(e) {
+  // Hardware back pressed
+  var screens = document.querySelectorAll('.screen.active');
+  var cur = screens.length ? screens[0].id : 'screen-tipe';
+  if (cur === 'screen-tipe') {
+    // Already at home, let browser handle (minimize)
+    history.pushState({ screen: 'screen-tipe' }, '', '');
+    return;
+  }
+  // Go back to home
+  if (cur === 'screen-form') {
+    showScreen('screen-bin');
+  } else if (cur === 'screen-bin') {
+    resetState();
+    showScreen('screen-tipe');
+  } else {
+    resetState();
+    showScreen('screen-tipe');
+  }
+});
 
 function goBack(targetScreen) {
   if (targetScreen === 'screen-tipe') {
@@ -2171,7 +2196,7 @@ function renderSearchResults(data) {
       + '<div class="rc-nama">' + r.skuNama + '</div>'
       + '<div class="rc-meta">'
       + '<span class="rc-tag pallet">' + palletLabel + '</span>'
-      + (ktnStr ? '<span class="rc-tag" style="color:#16a34a;border-color:#16a34a40;background:#16a34a10;font-size:11px;">' + ktnStr + '</span>' : '')
+      + (ktnStr ? '<span class="rc-tag" style="color:#15803d;border-color:#16a34a60;background:#16a34a15;font-size:11px;font-weight:700;">' + ktnStr + '</span>' : '')
       + pd + qt
       + '<span class="rc-tag tipe ' + r.tipe.toLowerCase() + '">' + r.tipe + '</span>'
       + '</div></div></div>';
