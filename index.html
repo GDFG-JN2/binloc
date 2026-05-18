@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f1117">
+<link rel="manifest" href="manifest.json">
+<title>BinLoc Operator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:       #0f1117;
+  --surface:  #181c25;
+  --surface2: #1f2433;
+  --border:   #2a3045;
+  --accent:   #4fffb0;
+  --accent2:  #ff6b6b;
+  --accent3:  #ffd166;
+  --text:     #e8eaf0;
+  --muted:    #6b7592;
+  --lokal:    #4fffb0;
+  --ekspor:   #a78bfa;
+  --radius:   14px;
+  --mono:     'DM Mono', monospace;
+  --sans:     'Syne', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* ── SCREENS ── */
+.screen { display: none; flex-direction: column; min-height: 100dvh; padding: 0; }
+.screen.active { display: flex; }
+
+/* ── HEADER ── */
+.app-header {
+  padding: 16px 20px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+}
+.app-header .back-btn {
+  width: 36px; height: 36px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text); font-size: 18px;
+  flex-shrink: 0;
+}
+.app-header .title-group { flex: 1; min-width: 0; }
+.app-header .title-group h2 { font-family: var(--sans); font-size: 16px; font-weight: 700; }
+.app-header .title-group .sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.badge {
+  padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
+  flex-shrink: 0;
+}
+.badge.lokal  { background: #4fffb020; color: var(--lokal); border: 1px solid #4fffb040; }
+.badge.ekspor { background: #a78bfa20; color: var(--ekspor); border: 1px solid #a78bfa40; }
+
+/* ── SCREEN 0: SPLASH ── */
+#screen-splash {
+  justify-content: center; align-items: center;
+  background: var(--bg);
+  gap: 8px;
+}
+.splash-logo {
+  font-family: var(--sans); font-size: 48px; font-weight: 800;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, var(--accent), #00c9ff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.splash-sub { color: var(--muted); font-size: 13px; letter-spacing: 3px; text-transform: uppercase; }
+.splash-dots { display: flex; gap: 6px; margin-top: 32px; }
+.splash-dots span {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--border);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.splash-dots span:nth-child(2) { animation-delay: .2s; }
+.splash-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes pulse { 0%,100%{opacity:.2;transform:scale(.8)} 50%{opacity:1;transform:scale(1);background:var(--accent)} }
+
+/* ── SCREEN 1: PILIH TIPE ── */
+#screen-tipe {
+  justify-content: center; align-items: center; padding: 32px 24px; gap: 16px;
+}
+.tipe-title {
+  font-family: var(--sans); font-size: 28px; font-weight: 800;
+  text-align: center; margin-bottom: 8px; line-height: 1.2;
+}
+.tipe-title span { color: var(--accent); }
+.tipe-sub { color: var(--muted); font-size: 13px; text-align: center; margin-bottom: 16px; }
+.tipe-cards { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 360px; }
+.tipe-card {
+  padding: 24px 28px;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all .2s;
+  position: relative; overflow: hidden;
+}
+.tipe-card::before {
+  content: ''; position: absolute; inset: 0;
+  opacity: 0; transition: opacity .2s;
+}
+.tipe-card.lokal::before  { background: linear-gradient(135deg, #4fffb015, #00c9ff10); }
+.tipe-card.ekspor::before { background: linear-gradient(135deg, #a78bfa15, #7c3aed10); }
+.tipe-card:active { transform: scale(.97); }
+.tipe-card:hover::before, .tipe-card:active::before { opacity: 1; }
+.tipe-card.lokal:hover  { border-color: var(--lokal); }
+.tipe-card.ekspor:hover { border-color: var(--ekspor); }
+.tipe-card .card-icon { font-size: 32px; margin-bottom: 10px; }
+.tipe-card .card-label { font-family: var(--sans); font-size: 22px; font-weight: 700; }
+.tipe-card.lokal  .card-label { color: var(--lokal); }
+.tipe-card.ekspor .card-label { color: var(--ekspor); }
+.tipe-card .card-desc { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* ── SCREEN 2: INPUT BIN ── */
+#screen-bin {
+  justify-content: center; align-items: center; padding: 32px 24px; gap: 16px;
+}
+.bin-input-title {
+  font-family: var(--sans); font-size: 24px; font-weight: 800;
+  text-align: center; line-height: 1.2;
+}
+.bin-input-title span { color: var(--accent); }
+.bin-input-sub { color: var(--muted); font-size: 13px; text-align: center; }
+.bin-input-wrap { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
+.bin-mode-toggle{ display:flex; gap:6px; width:100%; max-width:360px; }
+.bin-mode-btn{ flex:1; padding:9px; border-radius:10px; border:1.5px solid var(--border); background:var(--surface2); color:var(--muted); font-size:12px; font-weight:700; cursor:pointer; text-align:center; transition:all .15s; }
+.bin-mode-btn.active{ border-color:var(--accent); background:#4fffb015; color:var(--accent); }
+.bin-mode-btn.lainlain-active{ border-color:#63b3ed; background:#63b3ed15; color:#63b3ed; }
+.bin-big-input {
+  width: 100%; background: var(--surface2);
+  border: 2px solid var(--border);
+  color: var(--text); border-radius: var(--radius);
+  padding: 20px 20px; font-family: var(--sans);
+  font-size: 28px; font-weight: 700;
+  letter-spacing: 3px; text-align: center;
+  outline: none; transition: border-color .15s;
+  -webkit-appearance: none; text-transform: uppercase;
+}
+.bin-big-input:focus { border-color: var(--accent); }
+.bin-big-input::placeholder { color: var(--border); font-size: 20px; letter-spacing: 1px; }
+.bin-confirm-btn {
+  width: 100%; padding: 18px;
+  background: var(--accent); color: #0f1117;
+  border: none; border-radius: var(--radius);
+  font-family: var(--sans); font-size: 16px; font-weight: 700;
+  cursor: pointer; transition: all .15s;
+}
+.bin-confirm-btn:active { transform: scale(.98); opacity: .9; }
+.bin-confirm-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+.bin-confirm-btn.ekspor-mode { background: var(--ekspor); }
+.bin-tipe-badge {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 20px; border-radius: 20px; font-size: 13px;
+}
+.bin-tipe-badge.lokal  { background: #4fffb015; border: 1px solid #4fffb040; color: var(--lokal); }
+.bin-tipe-badge.ekspor { background: #a78bfa15; border: 1px solid #a78bfa40; color: var(--ekspor); }
+
+/* ── SCREEN 3: AKSI ── */
+.screen-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+.bin-display {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 16px;
+}
+.bin-icon { font-size: 28px; }
+.bin-info { flex: 1; }
+.bin-info .bin-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.bin-info .bin-value { font-family: var(--sans); font-size: 24px; font-weight: 700; color: var(--accent); letter-spacing: 1px; margin-top: 2px; }
+
+.aksi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+.aksi-btn {
+  padding: 16px 8px;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: var(--surface);
+  cursor: pointer; text-align: center;
+  transition: all .15s;
+  font-family: var(--mono);
+}
+.aksi-btn:active { transform: scale(.95); }
+.aksi-btn .aksi-icon { font-size: 22px; margin-bottom: 6px; }
+.aksi-btn .aksi-label { font-size: 11px; color: var(--muted); }
+.aksi-btn.selected { border-color: var(--accent); background: #4fffb015; }
+.aksi-btn.selected .aksi-label { color: var(--accent); }
+
+/* ── FORM FIELDS ── */
+.form-section { margin-bottom: 20px; }
+.form-section .section-label {
+  font-size: 11px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 10px;
+}
+
+.field-wrap { margin-bottom: 12px; position: relative; }
+.field-wrap label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 6px; }
+.field-input {
+  width: 100%; background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text); border-radius: 10px;
+  padding: 13px 16px; font-family: var(--mono); font-size: 16px;
+  outline: none; transition: border-color .15s;
+  -webkit-appearance: none;
+  transform: translateZ(0); /* prevent iOS zoom flicker */
+}
+.field-input:focus { border-color: var(--accent); }
+.field-input::placeholder { color: var(--muted); }
+
+/* SKU Search */
+.sku-search-wrap { position: relative; }
+.sku-search-wrap .search-icon {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); font-size: 16px; pointer-events: none;
+}
+.sku-search-wrap .field-input { padding-left: 40px; }
+.sku-results {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px #00000060;
+  max-height: 200px; overflow-y: auto;
+}
+.sku-item {
+  padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border);
+  transition: background .1s;
+}
+.sku-item:last-child { border-bottom: none; }
+.sku-item:active { background: var(--border); }
+.sku-item .sku-code { font-size: 13px; color: var(--accent); font-weight: 500; }
+.sku-item .sku-stok {
+  font-size: 11px; color: var(--accent);
+  background: #4fffb015; border: 1px solid #4fffb030;
+  padding: 3px 8px; border-radius: 10px; white-space: nowrap;
+  flex-shrink: 0;
+}
+.sku-selected-display {
+  display: none;
+  background: var(--surface2); border: 1px solid var(--accent);
+  border-radius: 10px; padding: 12px 16px;
+  flex-direction: column; gap: 4px;
+}
+.sku-selected-display.show { display: flex; }
+.sku-selected-display .s-code { font-size: 13px; color: var(--accent); }
+.sku-selected-display .s-name { font-size: 12px; color: var(--muted); }
+.sku-clear { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 18px; cursor: pointer; display: none; }
+.sku-clear.show { display: block; }
+
+/* Bin tujuan (pindah) */
+.bin-tujuan-wrap { display: none; }
+.bin-tujuan-wrap.show { display: block; }
+.tujuan-toggle { display:flex; gap:6px; margin-bottom:10px; }
+.tujuan-toggle-btn { flex:1; padding:8px; border-radius:8px; border:1.5px solid var(--border); background:var(--surface2); color:var(--muted); font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; text-align:center; }
+.tujuan-toggle-btn.active { border-color:var(--accent); background:#4fffb015; color:var(--accent); }
+.tujuan-toggle-btn.active.ekspor-mode { border-color:var(--ekspor); background:#a78bfa15; color:var(--ekspor); }
+.scan-inline-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); padding: 10px 14px; border-radius: 10px;
+  font-family: var(--mono); font-size: 12px; cursor: pointer;
+  margin-top: 8px; width: fit-content;
+}
+
+/* Operator chips */
+.operator-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.op-chip {
+  padding: 8px 16px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--surface2);
+  font-family: var(--mono); font-size: 13px; cursor: pointer;
+  transition: all .15s; color: var(--text);
+}
+.op-chip:active { transform: scale(.95); }
+.op-chip.selected { border-color: var(--accent3); background: #ffd16620; color: var(--accent3); }
+
+/* Submit */
+.submit-btn {
+  width: 100%; padding: 18px;
+  background: var(--accent); color: #0f1117;
+  border: none; border-radius: var(--radius);
+  font-family: var(--sans); font-size: 16px; font-weight: 700;
+  cursor: pointer; letter-spacing: .5px;
+  transition: all .15s; margin-bottom: 16px;
+}
+.submit-btn:active { transform: scale(.98); opacity: .9; }
+.submit-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+.submit-btn.ekspor-mode { background: var(--ekspor); }
+
+/* ── SCREEN 4: SUCCESS ── */
+#screen-success {
+  justify-content: center; align-items: center;
+  padding: 32px 24px; gap: 12px; text-align: center;
+}
+.success-ring {
+  width: 100px; height: 100px; border-radius: 50%;
+  background: #4fffb015; border: 3px solid var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 48px;
+  animation: popIn .4s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes popIn { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+.success-title { font-family: var(--sans); font-size: 24px; font-weight: 800; color: var(--accent); }
+.success-detail { font-size: 13px; color: var(--muted); max-width: 280px; line-height: 1.6; }
+.success-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; margin-top: 8px; }
+.btn-next {
+  width: 100%; padding: 16px;
+  border-radius: var(--radius); font-family: var(--sans); font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: all .15s; border: none;
+}
+.btn-next.primary { background: var(--accent); color: #0f1117; }
+.btn-next.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-next:active { transform: scale(.97); }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--surface2); border: 1px solid var(--border);
+  padding: 12px 20px; border-radius: 100px;
+  font-size: 13px; color: var(--text);
+  box-shadow: 0 8px 24px #00000080;
+  transition: transform .3s cubic-bezier(.175,.885,.32,1.275), opacity .3s;
+  opacity: 0; z-index: 9999; white-space: nowrap;
+}
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* ── MODAL (manual bin input) ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: #00000080; align-items: flex-end;
+}
+.modal-overlay.show { display: flex; }
+.modal-sheet {
+  background: var(--surface); border-top-left-radius: 24px; border-top-right-radius: 24px;
+  padding: 24px; width: 100%;
+  animation: slideUp .25s ease;
+}
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.modal-title { font-family: var(--sans); font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.modal-btn {
+  flex: 1; padding: 14px; border-radius: 10px;
+  font-family: var(--sans); font-size: 14px; font-weight: 700; cursor: pointer; border: none;
+}
+.modal-btn.confirm { background: var(--accent); color: #0f1117; }
+.modal-btn.cancel  { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+/* ── LOADING OVERLAY ── */
+#loading-overlay {
+  display: none; position: fixed; inset: 0; z-index: 1000;
+  background: #0f111780; align-items: center; justify-content: center;
+}
+#loading-overlay.show { display: flex; }
+.spinner {
+  width: 48px; height: 48px; border: 3px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── SEARCH CARD di tipe screen ── */
+.search-card {
+  border-style: dashed !important;
+}
+.search-card:hover { border-color: var(--accent3) !important; }
+
+/* ── SEARCH TIPE TOGGLE ── */
+.search-tipe-btn {
+  padding: 8px 16px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--surface2);
+  font-family: var(--mono); font-size: 13px; cursor: pointer;
+  color: var(--muted); transition: all .15s;
+}
+.search-tipe-btn.active { border-color: var(--accent3); background: #ffd16620; color: var(--accent3); }
+.search-tipe-btn.peta-active { border-color: #63b3ed; background: #63b3ed20; color: #63b3ed; }
+
+/* ── PETA SEBARAN PWA ── */
+#peta-pane{ display:none; padding:0 0 80px; }
+.peta-scroll-wrap{ overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch; width:100%; }
+.peta-legend{ display:flex; gap:10px; flex-wrap:wrap; padding:10px 16px; background:var(--surface2); border-radius:10px; margin:12px 0 10px; align-items:center; }
+.peta-legend-item{ display:flex; align-items:center; gap:5px; font-size:10px; font-weight:700; color:var(--muted); }
+.peta-legend-dot{ width:13px; height:13px; border-radius:3px; flex-shrink:0; }
+.peta-map-wrap{ display:flex; flex-direction:column; gap:0; min-width:max-content; width:max-content; background:var(--surface2); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.peta-num-hdr{ display:flex; align-items:center; background:#1a2535; border-bottom:2px solid var(--border); padding:4px 6px 4px 38px; gap:2px; }
+.peta-num-hdr span{ width:26px; text-align:center; font-size:8px; font-weight:700; color:#4a5568; flex-shrink:0; }
+.peta-num-hdr span.tick{ color:#718096; }
+.peta-row-group{ display:flex; flex-direction:column; gap:2px; padding:5px 6px; border-bottom:1px solid var(--border); }
+.peta-row-group:last-child{ border-bottom:none; }
+.peta-gap{ height:0; border-bottom:5px solid #1a2535; }
+.peta-row{ display:flex; align-items:center; gap:2px; }
+.peta-row-lbl{ width:28px; font-size:10px; font-weight:800; color:#63b3ed; flex-shrink:0; }
+.peta-cell{ width:26px; height:20px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:8.5px; font-weight:700; cursor:pointer; border:1px solid rgba(0,0,0,.2); flex-shrink:0; transition:transform .1s; }
+.peta-cell:active{ transform:scale(1.2); }
+.peta-void{ width:26px; height:20px; flex-shrink:0; }
+.peta-empty  { background:#1e2a3a; color:#4a5568; border-color:#2d3748; }
+.peta-green  { background:#1a4731; color:#68d391; border-color:#276749; }
+.peta-yellow { background:#44370a; color:#f6e05e; border-color:#744210; }
+.peta-orange { background:#4a2510; color:#fbd38d; border-color:#7b341e; }
+.peta-red    { background:#4a1515; color:#feb2b2; border-color:#742a2a; }
+/* popup peta */
+#petaOverlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9500; align-items:flex-end; justify-content:center; }
+#petaOverlay.show{ display:flex; }
+#petaPopup{ background:var(--surface); border-radius:18px 18px 0 0; width:100%; max-height:70vh; display:flex; flex-direction:column; box-shadow:0 -4px 30px rgba(0,0,0,.4); overflow:hidden; animation:slideUp .25s cubic-bezier(.34,1.2,.64,1); }
+@keyframes slideUp{ from{ transform:translateY(100%); } to{ transform:translateY(0); } }
+#petaPopupHdr{ padding:14px 18px 10px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+#petaPopupTitle{ font-size:15px; font-weight:800; color:var(--text); }
+#petaPopupCap{ font-size:11px; color:var(--muted); margin-top:2px; }
+#petaPopupClose{ font-size:20px; color:var(--muted); cursor:pointer; padding:0 4px; background:none; border:none; }
+#petaPopupBody{ overflow-y:auto; padding:10px 16px 24px; }
+.peta-pop-row{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; }
+.peta-pop-row:last-child{ border-bottom:none; }
+.peta-pop-sku{ font-weight:800; color:#63b3ed; min-width:80px; }
+.peta-pop-nama{ color:var(--text); flex:1; font-size:11px; }
+.peta-pop-plt{ font-weight:800; color:#f6e05e; white-space:nowrap; }
+.peta-pop-prodate{ color:var(--muted); font-size:10px; white-space:nowrap; }
+.result-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.result-card .rc-bin {
+  font-family: var(--sans); font-size: 22px; font-weight: 800;
+  color: var(--accent); letter-spacing: 1px; min-width: 60px;
+  flex-shrink: 0;
+}
+.result-card .rc-info { flex: 1; min-width: 0; }
+.result-card .rc-sku  { font-size: 12px; color: var(--accent); font-weight: 500; }
+.result-card .rc-nama { font-size: 14px; color: var(--text); margin: 2px 0 6px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.result-card .rc-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.result-card .rc-tag  {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+}
+.result-card .rc-tag.pallet { color: var(--accent3); border-color: #ffd16640; background: #ffd16610; }
+.result-card .rc-tag.tipe.lokal  { color: var(--lokal);  border-color: #4fffb040; background: #4fffb010; }
+.result-card .rc-tag.tipe.ekspor { color: var(--ekspor); border-color: #a78bfa40; background: #a78bfa10; }
+
+
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── PRODATE CHIPS ── */
+.prodate-chip {
+  padding: 7px 14px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--surface2);
+  font-family: var(--mono); font-size: 12px; cursor: pointer;
+  color: var(--text); transition: all .15s; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.prodate-chip:active { transform: scale(.95); }
+.prodate-chip.selected { border-color: var(--accent); background: #4fffb020; color: var(--accent); }
+.prodate-chip .chip-pallet { font-size: 10px; color: var(--muted); }
+.prodate-chip.selected .chip-pallet { color: #4fffb080; }
+.prodate-chip.fifo-first { border-color: var(--accent3); }
+.prodate-chip.fifo-first::after { content: ' ★'; font-size: 10px; color: var(--accent3); margin-left: 2px; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-overlay"><div class="spinner"></div></div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+
+<!-- ═══════════════════════════════
+     SCREEN 0: SPLASH
+═══════════════════════════════ -->
+<div class="screen active" id="screen-splash">
+  <div class="splash-logo">BINLOC</div>
+  <div class="splash-sub">Warehouse Movement</div>
+  <div class="splash-dots">
+    <span></span><span></span><span></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN 1: PILIH TIPE
+═══════════════════════════════ -->
+<div class="screen" id="screen-tipe">
+  <div class="tipe-title">Pilih<br><span>Tipe Barang</span></div>
+  <div class="tipe-sub">Sesi ini untuk jenis barang apa?</div>
+  <div class="tipe-cards">
+    <div class="tipe-card lokal" onclick="pilihTipe('LOKAL')">
+      <div class="card-icon">🏭</div>
+      <div class="card-label">Lokal</div>
+      <div class="card-desc">Pallet + Prodate</div>
+    </div>
+    <div class="tipe-card ekspor" onclick="pilihTipe('EKSPOR')">
+      <div class="card-icon">🚢</div>
+      <div class="card-label">Ekspor</div>
+      <div class="card-desc">Pallet + Prodate + Quotation</div>
+    </div>
+    <div class="tipe-card search-card" onclick="showScreen('screen-search')">
+      <div class="card-icon">🔍</div>
+      <div class="card-label" style="color:var(--accent3)">Cari Posisi Barang</div>
+      <div class="card-desc">Cari bin loc berdasarkan SKU / Prodate / Quotation</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN 2: INPUT BIN
+═══════════════════════════════ -->
+<div class="screen" id="screen-bin">
+  <div class="app-header">
+    <div class="back-btn" onclick="goBack('screen-tipe')">←</div>
+    <div class="title-group">
+      <h2>Input Bin Loc</h2>
+      <div class="sub" id="bin-screen-sub">Ketik kode bin dari label racking</div>
+    </div>
+    <div class="badge" id="bin-badge">—</div>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:16px">
+    <div style="font-size:48px" id="bin-screen-icon">📦</div>
+    <div class="bin-input-title" id="bin-screen-title">Kode <span>Bin Loc</span></div>
+
+    <!-- Mode Toggle -->
+    <div class="bin-mode-toggle">
+      <div class="bin-mode-btn active" id="binmode-racking"  onclick="setBinMode('racking')">📦 Racking</div>
+      <div class="bin-mode-btn"        id="binmode-lainlain" onclick="setBinMode('lainlain')">📍 Lain-lain</div>
+    </div>
+
+    <div class="bin-input-wrap">
+      <!-- Mode: Racking -->
+      <div id="binmode-racking-wrap">
+        <input class="bin-big-input" id="bin-loc-input"
+          placeholder="A1" autocapitalize="characters"
+          autocomplete="off" autocorrect="off" spellcheck="false"
+          oninput="onBinInputChange()"
+          onkeydown="if(event.key==='Enter') confirmBinInput()">
+        <div id="bin-loc-warn" style="display:none;font-size:11px;color:var(--accent2);margin-top:4px">
+          ⚠️ Kode bin harus mengandung huruf (contoh: A1, B-03)
+        </div>
+      </div>
+      <!-- Mode: Lain-lain -->
+      <div id="binmode-lainlain-wrap" style="display:none;width:100%;max-width:360px">
+        <div id="lainlain-loading" style="text-align:center;padding:20px;color:var(--muted);font-size:12px">⏳ Memuat lokasi...</div>
+        <div id="lainlain-list" style="display:none;display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto"></div>
+        <div id="lainlain-new-wrap" style="display:none;margin-top:10px">
+          <input class="bin-big-input" id="bin-loc-custom"
+            placeholder="Nama lokasi baru..." style="font-size:15px;letter-spacing:0"
+            autocomplete="off" oninput="onBinCustomChange()"
+            onkeydown="if(event.key==='Enter') confirmBinInput()">
+        </div>
+        <button id="lainlain-add-btn" onclick="toggleLainlainNew()" style="display:none;margin-top:8px;width:100%;padding:10px;border:1.5px dashed #63b3ed60;border-radius:10px;background:none;color:#63b3ed;font-size:12px;font-weight:700;cursor:pointer">+ Lokasi Baru</button>
+      </div>
+
+      <button class="bin-confirm-btn" id="bin-confirm-btn" onclick="confirmBinInput()" disabled>
+        Konfirmasi →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN 5: SEARCH POSISI BARANG
+═══════════════════════════════ -->
+<div class="screen" id="screen-search">
+  <div class="app-header">
+    <div class="back-btn" onclick="goBack('screen-tipe')">←</div>
+    <div class="title-group">
+      <h2>Cari Posisi Barang</h2>
+      <div class="sub">Lokal & Ekspor</div>
+    </div>
+  </div>
+  <div class="screen-body">
+
+    <!-- Filter tipe -->
+    <div class="form-section">
+      <div class="section-label">Tipe</div>
+      <div style="display:flex;gap:8px">
+        <div class="search-tipe-btn active" id="stipe-SEMUA"  onclick="setSearchTipe('SEMUA')">Semua</div>
+        <div class="search-tipe-btn" id="stipe-LOKAL"  onclick="setSearchTipe('LOKAL')">Lokal</div>
+        <div class="search-tipe-btn" id="stipe-EKSPOR" onclick="setSearchTipe('EKSPOR')">Ekspor</div>
+        <div class="search-tipe-btn" id="stipe-PETA"   onclick="setSearchTipe('PETA')">🗺️ Peta</div>
+      </div>
+    </div>
+
+    <!-- Field pencarian -->
+    <div class="form-section">
+      <div class="section-label">Kata Kunci</div>
+      <div class="field-wrap" style="position:relative">
+        <input class="field-input" id="search-sku-input"
+          placeholder="Kode / nama barang..."
+          autocomplete="off" autocorrect="off"
+          oninput="onSearchInput()" onfocus="onSearchSkuFocus()">
+        <span id="search-clear" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px;cursor:pointer;display:none" onclick="clearSearch()">✕</span>
+        <div class="sku-results" id="search-sku-results" style="display:none"></div>
+      </div>
+      <div class="field-wrap" id="wrap-search-prodate">
+        <label>Prodate (opsional)</label>
+        <input class="field-input" id="search-prodate" type="date">
+      </div>
+      <div class="field-wrap">
+        <label>Bin Loc (opsional)</label>
+        <input class="field-input" id="search-binloc" placeholder="Contoh: A1, B3..."
+          autocapitalize="characters" style="text-transform:uppercase"
+          oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="field-wrap" id="wrap-search-quotation" style="display:none">
+        <label>Quotation No. (opsional)</label>
+        <input class="field-input" id="search-quotation"
+          placeholder="QT-XXXXX" autocapitalize="characters"
+          oninput="onSearchInput()">
+      </div>
+    </div>
+
+    <button class="submit-btn" onclick="doSearch()" id="search-btn" style="margin-bottom:16px">
+      🔍 Cari
+    </button>
+
+    <!-- Hasil -->
+    <div id="search-results-wrap" style="display:none">
+      <div class="section-label" style="margin-bottom:12px">
+        Hasil <span id="search-count" style="color:var(--accent)"></span>
+      </div>
+      <div id="search-results"></div>
+    </div>
+
+    <div id="search-empty" style="display:none;text-align:center;padding:40px 0;color:var(--muted)">
+      <div style="font-size:40px;margin-bottom:12px">📭</div>
+      <div style="font-size:13px">Barang tidak ditemukan</div>
+    </div>
+
+    <!-- Peta Sebaran -->
+    <div id="peta-pane">
+      <div class="peta-legend">
+        <span style="font-size:10px;font-weight:700;color:var(--muted);margin-right:4px">Kapasitas:</span>
+        <div class="peta-legend-item"><div class="peta-legend-dot peta-empty"></div>Kosong</div>
+        <div class="peta-legend-item"><div class="peta-legend-dot peta-green"></div>&lt;50%</div>
+        <div class="peta-legend-item"><div class="peta-legend-dot peta-yellow"></div>50–75%</div>
+        <div class="peta-legend-item"><div class="peta-legend-dot peta-orange"></div>75–99%</div>
+        <div class="peta-legend-item"><div class="peta-legend-dot peta-red"></div>≥100%</div>
+        <button onclick="petaRefresh()" id="peta-refresh-btn" style="margin-left:auto;padding:5px 12px;border:1px solid #63b3ed40;border-radius:8px;background:#63b3ed15;color:#63b3ed;font-size:10px;font-weight:700;cursor:pointer">🔄 Refresh</button>
+      </div>
+      <div class="peta-scroll-wrap">
+        <div id="peta-map-wrap" class="peta-map-wrap">
+          <div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">Memuat peta...</div>
+        </div>
+      </div>
+      <div id="peta-lainlain" style="display:none;margin-top:14px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Popup Peta -->
+<div id="petaOverlay" onclick="if(event.target===this)petaClosePopup()">
+  <div id="petaPopup">
+    <div id="petaPopupHdr">
+      <div>
+        <div id="petaPopupTitle">—</div>
+        <div id="petaPopupCap">—</div>
+      </div>
+      <button id="petaPopupClose" onclick="petaClosePopup()">✕</button>
+    </div>
+    <div id="petaPopupBody"></div>
+  </div>
+</div>
+
+
+<div class="screen" id="screen-form">
+  <div class="app-header">
+    <div class="back-btn" onclick="goBack('screen-bin')">←</div>
+    <div class="title-group">
+      <h2 id="form-header-title">Input Movement</h2>
+      <div class="sub" id="form-header-sub">Isi detail transaksi</div>
+    </div>
+    <div class="badge" id="form-badge">—</div>
+  </div>
+  <div class="screen-body">
+
+    <!-- Bin display -->
+    <div class="bin-display">
+      <div class="bin-icon">📦</div>
+      <div class="bin-info">
+        <div class="bin-label">Bin Loc</div>
+        <div class="bin-value" id="form-bin-display">—</div>
+      </div>
+    </div>
+
+    <!-- Pilih Aksi -->
+    <div class="form-section">
+      <div class="section-label">Aksi</div>
+      <div class="aksi-grid">
+        <div class="aksi-btn" onclick="pilihAksi('MASUK')" id="aksi-MASUK">
+          <div class="aksi-icon">📥</div>
+          <div class="aksi-label">MASUK</div>
+        </div>
+        <div class="aksi-btn" onclick="pilihAksi('KELUAR')" id="aksi-KELUAR">
+          <div class="aksi-icon">📤</div>
+          <div class="aksi-label">KELUAR</div>
+        </div>
+        <div class="aksi-btn" onclick="pilihAksi('PINDAH')" id="aksi-PINDAH">
+          <div class="aksi-icon">🔄</div>
+          <div class="aksi-label">PINDAH</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SKU Search -->
+    <div class="form-section">
+      <div class="section-label">Barang</div>
+      <div class="field-wrap sku-search-wrap" id="sku-search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="field-input" id="sku-input" placeholder="Ketik kode atau nama barang..." autocomplete="off">
+        <span class="sku-clear" id="sku-clear" onclick="clearSku()">✕</span>
+        <div class="sku-results" id="sku-results" style="display:none"></div>
+      </div>
+      <div class="sku-selected-display" id="sku-selected">
+        <span class="s-code" id="sel-code">—</span>
+        <span class="s-name" id="sel-name">—</span>
+      </div>
+    </div>
+
+    <!-- Bin Tujuan (hanya jika PINDAH) -->
+    <div class="bin-tujuan-wrap" id="bin-tujuan-wrap">
+      <div class="form-section">
+        <div class="section-label">Tujuan</div>
+        <div class="tujuan-toggle">
+          <div class="tujuan-toggle-btn active" id="tujuan-btn-racking" onclick="setTujuanMode('racking')">📦 Racking</div>
+          <div class="tujuan-toggle-btn" id="tujuan-btn-lainlain" onclick="setTujuanMode('lainlain')">📍 Lain-lain</div>
+        </div>
+        <!-- Mode: Racking -->
+        <div id="tujuan-racking-wrap">
+          <input class="field-input" id="bin-tujuan-input" placeholder="cth: A1, B12..." style="text-transform:uppercase"
+            oninput="this.value=this.value.toUpperCase(); state.binTujuan=normalizeBinLoc(this.value.trim()); this.value=state.binTujuan||this.value; updateSubmitState()">
+        </div>
+        <!-- Mode: Lain-lain -->
+        <div id="tujuan-lainlain-wrap" style="display:none">
+          <input class="field-input" id="bin-tujuan-custom" placeholder="cth: Lorong A, Area Loading, Staging..."
+            oninput="state.binTujuan=this.value.trim(); updateSubmitState()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Fields dinamis -->
+    <div class="form-section" id="dynamic-fields">
+      <div class="section-label">Detail</div>
+
+      <!-- Pallet Full + Pecahan + Total -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px">
+        <div class="field-wrap" style="margin:0">
+          <label>Pallet Full</label>
+          <input class="field-input" id="f-pallet" type="number" min="0" placeholder="0"
+            inputmode="numeric" oninput="calcTotal(); validatePallet()">
+        </div>
+        <div class="field-wrap" style="margin:0">
+          <label>Pecahan (ktn)</label>
+          <input class="field-input" id="f-pecahan" type="number" min="0" placeholder="0"
+            inputmode="numeric" oninput="calcTotal()">
+        </div>
+        <div class="field-wrap" style="margin:0">
+          <label>Total Karton</label>
+          <input class="field-input" id="f-total-karton" type="number" placeholder="—"
+            readonly style="background:var(--surface);color:var(--accent);font-weight:700;cursor:default">
+        </div>
+      </div>
+      <!-- STD info -->
+      <div id="std-info" style="display:none;font-size:11px;color:var(--muted);margin-bottom:8px;padding:6px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <span id="std-info-text"></span>
+        <span id="stok-info" style="display:none;margin-left:12px;color:var(--accent3);font-weight:700"></span>
+      </div>
+      <!-- Warning STD tidak ada -->
+      <div id="std-warn" style="display:none;font-size:11px;color:var(--accent3);margin-bottom:12px;padding:8px 12px;background:#ffd16615;border-radius:8px;border:1px solid #ffd16640">
+        ⚠️ STD tidak ditemukan untuk barang ini — Total Karton tidak dihitung
+      </div>
+      <!-- Warning pallet melebihi stok -->
+      <div id="pallet-warn" style="display:none;font-size:11px;color:var(--accent2);margin-bottom:12px;padding:8px 12px;background:#ff6b6b15;border-radius:8px;border:1px solid #ff6b6b40">
+        ❌ Jumlah pallet melebihi stok tersedia
+      </div>
+
+      <div class="field-wrap">
+        <label id="prodate-label">Prodate</label>
+        <div id="prodate-chips" style="display:none; flex-wrap:wrap; gap:8px; margin-bottom:8px"></div>
+        <input class="field-input" id="f-prodate" type="date">
+      </div>
+      <!-- Quotation hanya ekspor -->
+      <div class="field-wrap" id="wrap-quotation" style="display:none">
+        <label>Quotation No.</label>
+        <input class="field-input" id="f-quotation" placeholder="QT-XXXXX"
+          autocapitalize="characters" type="text" inputmode="text">
+      </div>
+    </div>
+
+    <!-- Keterangan (opsional) -->
+    <div class="form-section">
+      <div class="section-label">Keterangan <span style="font-size:10px;color:var(--muted);font-weight:400">(opsional)</span></div>
+      <textarea class="field-input" id="f-keterangan" rows="2"
+        placeholder="Catatan tambahan..."
+        style="resize:none;line-height:1.5;padding:10px 12px;font-family:var(--mono);font-size:13px"></textarea>
+    </div>
+
+    <!-- Operator -->
+    <div class="form-section">
+      <div class="section-label">Operator</div>
+      <div class="operator-chips">
+        <div class="op-chip" onclick="pilihOp(this, 'A')">A</div>
+        <div class="op-chip" onclick="pilihOp(this, 'B')">B</div>
+        <div class="op-chip" onclick="pilihOp(this, 'C')">C</div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <button class="submit-btn" id="submit-btn" onclick="submitForm()" disabled>
+      Simpan Transaksi
+    </button>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN 4: SUCCESS
+═══════════════════════════════ -->
+<div class="screen" id="screen-success">
+  <div class="success-ring">✓</div>
+  <div class="success-title">Tersimpan!</div>
+  <div class="success-detail" id="success-detail">—</div>
+  <div class="success-actions">
+    <button class="btn-next primary" onclick="lanjutScanBaru()">📦 Input Bin Baru</button>
+    <button class="btn-next secondary" onclick="lanjutBinSama()">↩ Bin Sama, Transaksi Baru</button>
+    <button class="btn-next secondary" onclick="goHome()">🏠 Kembali ke Awal</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// KONFIGURASI — isi URL GAS setelah deploy
+// ═══════════════════════════════════════
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbxz3Qaupa6OOY5EWKIJEJfKOId9ZoEBVI2R0k0Dh9xvETdm9y3yAfhKLDTNNzcmrWUHtQ/exec';
+
+// Helper: panggil GAS Web App via fetch
+function gasCall(action, params, onSuccess, onError) {
+  fetch(GAS_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: action, params: (params !== undefined ? params : null) })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) { if (onSuccess) onSuccess(data); })
+  .catch(function(err) { if (onError) onError(err); });
+}
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+var state = {
+  tipe: null,
+  binLoc: null,
+  binTujuan: null,
+  aksi: null,
+  sku: null,
+  operator: null,
+  selectedProdate: null,
+  std: null,
+  maxPallet: null,
+  maxKarton: null
+};
+
+var skuData    = [];  // semua SKU (untuk MASUK)
+var binSkuData = [];  // SKU yg ada di bin ini (untuk KELUAR/PINDAH)
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+window.addEventListener('load', function() {
+  initListeners();
+  // Langsung ke screen tipe tanpa tunggu SKU
+  setTimeout(function() { showScreen('screen-tipe'); }, 400);
+  // Load SKU di background
+  gasCall('getBinSkuList', null,
+    function(data) { skuData = data || []; },
+    function()     { skuData = []; }
+  );
+});
+
+function initListeners() {
+  document.getElementById('sku-input').addEventListener('input', function() {
+    var q = this.value.trim().toLowerCase();
+    if (state.sku) return;
+    document.getElementById('sku-clear').classList.toggle('show', q.length > 0);
+
+    if (!q) {
+      if (state.aksi && state.aksi !== 'MASUK' && binSkuData.length) {
+        renderSkuResults(binSkuData);
+      } else {
+        document.getElementById('sku-results').style.display = 'none';
+      }
+      return;
+    }
+
+    var source = (state.aksi && state.aksi !== 'MASUK') ? binSkuData : skuData;
+    var matches = source.filter(function(s) {
+      return s.kode.toLowerCase().includes(q) || s.nama.toLowerCase().includes(q);
+    }).slice(0, 8);
+
+    var res = document.getElementById('sku-results');
+    if (!matches.length) { res.style.display = 'none'; return; }
+    renderSkuResults(matches);
+  });
+
+  document.getElementById('sku-input').addEventListener('focus', function() {
+    if (state.sku) return;
+    if (state.aksi && state.aksi !== 'MASUK' && binSkuData.length) {
+      renderSkuResults(binSkuData);
+    }
+  });
+}
+
+function loadSkuData() { /* handled in init */ }
+
+// ═══════════════════════════════════════
+// SCREEN NAVIGATION
+// ═══════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s) {
+    s.classList.remove('active');
+  });
+  document.getElementById(id).classList.add('active');
+}
+
+function goBack(targetScreen) {
+  if (targetScreen === 'screen-tipe') {
+    resetState();
+  } else if (targetScreen === 'screen-bin') {
+    // Restore nilai bin input kalau ada
+    if (state.binLoc) {
+      document.getElementById('bin-loc-input').value = state.binLoc;
+      document.getElementById('bin-confirm-btn').disabled = false;
+    }
+    // Reset form state tapi jaga binLoc
+    var savedBin = state.binLoc;
+    var savedTipe = state.tipe;
+    resetState();
+    state.binLoc = savedBin;
+    state.tipe = savedTipe;
+    if (savedBin) {
+      document.getElementById('bin-loc-input').value = savedBin;
+      document.getElementById('bin-confirm-btn').disabled = false;
+    }
+  }
+  showScreen(targetScreen);
+}
+
+function goHome() {
+  resetState();
+  showScreen('screen-tipe');
+}
+
+function resetState() {
+  state.binLoc = null;
+  state.binTujuan = null;
+  state.aksi = null;
+  state.sku = null;
+  state.operator = null;
+  state.selectedProdate = null;
+  state.std = null;
+  state.maxPallet = null;
+  state.maxKarton = null;
+  // reset form
+  document.getElementById('sku-input').value = '';
+  document.getElementById('sku-results').style.display = 'none';
+  document.getElementById('sku-selected').classList.remove('show');
+  document.getElementById('sku-clear').classList.remove('show');
+  document.getElementById('prodate-chips').style.display = 'none';
+  document.getElementById('prodate-chips').innerHTML = '';
+  document.getElementById('f-pallet').value = '';
+  document.getElementById('f-pecahan').value = '';
+  document.getElementById('f-total-karton').value = '';
+  document.getElementById('f-prodate').value = '';
+  document.getElementById('f-quotation').value = '';
+  document.getElementById('f-keterangan').value = '';
+  document.getElementById('bin-tujuan-input').value = '';
+  document.getElementById('bin-tujuan-custom').value = '';
+  setTujuanMode('racking');
+  document.getElementById('std-info').style.display = 'none';
+  document.getElementById('std-warn').style.display = 'none';
+  document.getElementById('pallet-warn').style.display = 'none';
+  document.getElementById('f-pallet').style.borderColor = '';
+  var stokEl = document.getElementById('stok-info');
+  if (stokEl) stokEl.style.display = 'none';
+  document.querySelectorAll('.aksi-btn').forEach(function(b) { b.classList.remove('selected'); });
+  document.querySelectorAll('.op-chip').forEach(function(c) { c.classList.remove('selected'); });
+  updateSubmitState();
+}
+
+// ═══════════════════════════════════════
+// TIPE
+// ═══════════════════════════════════════
+function pilihTipe(tipe) {
+  state.tipe = tipe;
+  var badgeBin  = document.getElementById('bin-badge');
+  var badgeForm = document.getElementById('form-badge');
+  badgeBin.textContent  = tipe; badgeBin.className  = 'badge ' + tipe.toLowerCase();
+  badgeForm.textContent = tipe; badgeForm.className = 'badge ' + tipe.toLowerCase();
+  document.getElementById('wrap-quotation').style.display = tipe === 'EKSPOR' ? 'block' : 'none';
+  var submitBtn = document.getElementById('submit-btn');
+  submitBtn.className = 'submit-btn' + (tipe === 'EKSPOR' ? ' ekspor-mode' : '');
+  var confirmBtn = document.getElementById('bin-confirm-btn');
+  confirmBtn.className = 'bin-confirm-btn' + (tipe === 'EKSPOR' ? ' ekspor-mode' : '');
+  resetState();
+  state.tipe = tipe;
+  document.getElementById('bin-loc-input').value = '';
+  document.getElementById('bin-confirm-btn').disabled = true;
+  showScreen('screen-bin');
+  setTimeout(function() { document.getElementById('bin-loc-input').focus(); }, 300);
+}
+
+// ═══════════════════════════════════════
+// INPUT BIN
+// ═══════════════════════════════════════
+var _binMode = 'racking'; // 'racking' | 'lainlain'
+var _lainlainLoaded = false;
+
+function setBinMode(mode) {
+  _binMode = mode;
+  document.getElementById('binmode-racking').className  = 'bin-mode-btn' + (mode==='racking'  ? ' active' : '');
+  document.getElementById('binmode-lainlain').className = 'bin-mode-btn' + (mode==='lainlain' ? ' lainlain-active' : '');
+  document.getElementById('binmode-racking-wrap').style.display  = mode==='racking'  ? '' : 'none';
+  document.getElementById('binmode-lainlain-wrap').style.display = mode==='lainlain' ? '' : 'none';
+  document.getElementById('bin-confirm-btn').disabled = true;
+  document.getElementById('bin-loc-input').value  = '';
+  document.getElementById('bin-loc-custom').value = '';
+  document.getElementById('bin-loc-warn').style.display = 'none';
+  var icon = mode==='lainlain' ? '📍' : '📦';
+  var sub  = mode==='lainlain' ? 'Pilih lokasi atau tambah baru' : 'Ketik kode bin dari label racking';
+  document.getElementById('bin-screen-icon').textContent = icon;
+  document.getElementById('bin-screen-sub').textContent  = sub;
+  if (mode === 'lainlain') {
+    // Sembunyikan confirm button — dipilih dari list
+    document.getElementById('bin-confirm-btn').style.display = 'none';
+    loadLainlainList();
+  } else {
+    document.getElementById('bin-confirm-btn').style.display = '';
+    setTimeout(function() { document.getElementById('bin-loc-input').focus(); }, 100);
+  }
+}
+
+function loadLainlainList() {
+  document.getElementById('lainlain-loading').style.display = '';
+  document.getElementById('lainlain-list').style.display    = 'none';
+  document.getElementById('lainlain-add-btn').style.display = 'none';
+  document.getElementById('lainlain-new-wrap').style.display = 'none';
+  document.getElementById('bin-loc-custom').value = '';
+
+  gasCall('getBinCurrent', null,
+    function(data) { renderLainlainList(data || []); },
+    function()     { renderLainlainList([]); }
+  );
+}
+
+function renderLainlainList(rawData) {
+  // Filter lokasi non-racking (capacity = 0)
+  var CAP_CFG = [
+    {l:'A',f:1,t:28},{l:'B',f:1,t:25},{l:'C',f:1,t:25},
+    {l:'D',f:1,t:25},{l:'E',f:1,t:25},{l:'F',f:1,t:25},
+    {l:'G',f:1,t:32},{l:'H',f:1,t:35},
+    {l:'I',f:1,t:43}
+  ];
+  function isRacking(bin) {
+    var m = bin.match(/^([A-Z]+)(\d+)$/);
+    if (!m) return false;
+    var L = m[1], n = parseInt(m[2]);
+    for (var i = 0; i < CAP_CFG.length; i++) {
+      if (CAP_CFG[i].l===L && n>=CAP_CFG[i].f && n<=CAP_CFG[i].t) return true;
+    }
+    return false;
+  }
+
+  // Agregasi per lokasi lain-lain
+  var locMap = {};
+  rawData.forEach(function(r) {
+    if (!isRacking(r.binLoc)) {
+      var k = r.binLoc;
+      if (!locMap[k]) locMap[k] = { items:[], pallet:0 };
+      locMap[k].items.push(r);
+      locMap[k].pallet += (r.pallet||0);
+    }
+  });
+
+  document.getElementById('lainlain-loading').style.display = 'none';
+  var locs = Object.keys(locMap).sort();
+  var listEl = document.getElementById('lainlain-list');
+
+  if (!locs.length) {
+    listEl.style.display = 'flex';
+    listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">Belum ada lokasi lain-lain.<br>Tambah lokasi baru di bawah.</div>';
+  } else {
+    listEl.style.display = 'flex';
+    listEl.innerHTML = locs.map(function(loc) {
+      var info    = locMap[loc];
+      var skuList = info.items.slice(0,2).map(function(i){ return i.skuNama||i.skuKode; }).join(', ')
+                  + (info.items.length>2 ? ' +' + (info.items.length-2) + ' lagi' : '');
+      return '<div onclick="selectLainlainLoc(\''+escHtml(loc)+'\')" style="'
+        + 'background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;'
+        + 'padding:12px 14px;cursor:pointer;transition:border-color .15s">'
+        + '<div style="font-size:13px;font-weight:800;color:#63b3ed">📍 ' + escHtml(loc) + '</div>'
+        + '<div style="font-size:12px;font-weight:700;color:var(--accent3);margin-top:2px">' + info.pallet + ' plt · ' + info.items.length + ' SKU</div>'
+        + '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + escHtml(skuList) + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  document.getElementById('lainlain-add-btn').style.display = '';
+}
+
+function selectLainlainLoc(loc) {
+  state.binLoc = loc;
+  // Highlight selected
+  var listEl = document.getElementById('lainlain-list');
+  listEl.querySelectorAll('div[onclick]').forEach(function(el) {
+    el.style.borderColor = '';
+  });
+  // Langsung confirm
+  proceedFromBin();
+}
+
+function toggleLainlainNew() {
+  var wrap = document.getElementById('lainlain-new-wrap');
+  var isShow = wrap.style.display === 'none' || wrap.style.display === '';
+  // toggle
+  if (wrap.style.display === 'none') {
+    wrap.style.display = '';
+    document.getElementById('bin-confirm-btn').style.display = '';
+    document.getElementById('bin-confirm-btn').disabled = true;
+    setTimeout(function(){ document.getElementById('bin-loc-custom').focus(); }, 100);
+  } else {
+    wrap.style.display = 'none';
+    document.getElementById('bin-confirm-btn').style.display = 'none';
+    document.getElementById('bin-loc-custom').value = '';
+  }
+}
+
+
+// B25, B-25, B.25, B025 → B25
+function normalizeBinLoc(raw) {
+  var v = raw.toUpperCase().replace(/[\s\.\-]/g, ''); // hapus spasi, titik, strip
+  var letters = v.match(/^[A-Z]+/);
+  var numbers = v.match(/\d+$/);
+  if (!letters) return v; // tidak ada huruf, kembalikan apa adanya
+  var num = numbers ? String(parseInt(numbers[0], 10)) : ''; // buang leading zero
+  return letters[0] + num;
+}
+
+function onBinInputChange() {
+  var raw    = document.getElementById('bin-loc-input').value;
+  var warnEl = document.getElementById('bin-loc-warn');
+  var btnEl  = document.getElementById('bin-confirm-btn');
+
+  // Normalize live: uppercase + strip separator, tampilkan hasil
+  var upper  = raw.toUpperCase();
+  if (upper !== raw) {
+    var sel = document.getElementById('bin-loc-input').selectionStart;
+    document.getElementById('bin-loc-input').value = upper;
+    try { document.getElementById('bin-loc-input').setSelectionRange(sel, sel); } catch(e){}
+  }
+
+  var val = raw.trim();
+  var hasLetter = /[a-zA-Z]/.test(val);
+  if (val && !hasLetter) {
+    warnEl.style.display = 'block';
+    btnEl.disabled = true;
+  } else {
+    warnEl.style.display = 'none';
+    btnEl.disabled = val.length === 0;
+  }
+}
+
+function onBinCustomChange() {
+  var val = document.getElementById('bin-loc-custom').value.trim();
+  document.getElementById('bin-confirm-btn').disabled = val.length === 0;
+}
+
+function confirmBinInput() {
+  if (_binMode === 'lainlain') {
+    var val = document.getElementById('bin-loc-custom').value.trim();
+    if (!val) return;
+    state.binLoc = val;
+    proceedFromBin();
+    return;
+  }
+  var raw = document.getElementById('bin-loc-input').value.trim();
+  if (!raw) return;
+  if (!/[a-zA-Z]/.test(raw)) {
+    document.getElementById('bin-loc-warn').style.display = 'block';
+    return;
+  }
+  var val = normalizeBinLoc(raw);
+  document.getElementById('bin-loc-input').value = val;  state.binLoc = val;
+  proceedFromBin();
+}
+
+function proceedFromBin() {
+  var val = state.binLoc;
+  document.getElementById('form-bin-display').textContent = val;
+  document.getElementById('form-header-sub').textContent  = 'Bin: ' + val;
+
+  showLoading(true);
+  gasCall('getSkuByBin', val,
+    function(data) {
+      showLoading(false);
+      binSkuData = data || [];
+      showScreen('screen-form');
+      setDefaultProdate();
+      autoSelectMasuk();
+    },
+    function() {
+      showLoading(false);
+      binSkuData = [];
+      showScreen('screen-form');
+      setDefaultProdate();
+      autoSelectMasuk();
+    }
+  );
+}
+
+function setDefaultProdate() {
+  var now    = new Date();
+  var cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0);
+  var target = now < cutoff
+    ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+    : new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var y  = target.getFullYear();
+  var mo = String(target.getMonth() + 1).padStart(2, '0');
+  var d  = String(target.getDate()).padStart(2, '0');
+  var dateStr = y + '-' + mo + '-' + d; // format yyyy-MM-dd wajib untuk input[type=date]
+  var el = document.getElementById('f-prodate');
+  el.setAttribute('value', dateStr);
+  el.value = dateStr;
+  try { el.valueAsDate = new Date(Date.UTC(y, target.getMonth(), target.getDate())); } catch(e) {}
+}
+
+// Auto-format DD-MM-YYYY saat ketik
+function formatProdateInput(el) {
+  var v = el.value.replace(/\D/g, '').substring(0, 8);
+  var out = '';
+  if (v.length >= 1) out = v.substring(0, 2);
+  if (v.length >= 3) out += '-' + v.substring(2, 4);
+  if (v.length >= 5) out += '-' + v.substring(4, 8);
+  el.value = out;
+}
+
+function autoSelectMasuk() {
+  // Auto-select aksi MASUK tapi tidak override jika sudah dipilih
+  if (!state.aksi) {
+    pilihAksi('MASUK');
+  }
+}
+
+
+
+// ═══════════════════════════════════════
+// TUJUAN MODE (PINDAH)
+// ═══════════════════════════════════════
+function setTujuanMode(mode) {
+  var isEkspor = state.tipe === 'EKSPOR';
+  var suffix   = isEkspor ? ' ekspor-mode' : '';
+
+  document.getElementById('tujuan-btn-racking').className  = 'tujuan-toggle-btn' + (mode === 'racking'  ? ' active' + suffix : '');
+  document.getElementById('tujuan-btn-lainlain').className = 'tujuan-toggle-btn' + (mode === 'lainlain' ? ' active' + suffix : '');
+  document.getElementById('tujuan-racking-wrap').style.display  = mode === 'racking'  ? '' : 'none';
+  document.getElementById('tujuan-lainlain-wrap').style.display = mode === 'lainlain' ? '' : 'none';
+
+  // Reset nilai tujuan saat ganti mode
+  state.binTujuan = null;
+  document.getElementById('bin-tujuan-input').value  = '';
+  document.getElementById('bin-tujuan-custom').value = '';
+  updateSubmitState();
+}
+
+// ═══════════════════════════════════════
+// AKSI
+// ═══════════════════════════════════════
+function pilihAksi(aksi) {
+  state.aksi = aksi;
+  document.querySelectorAll('.aksi-btn').forEach(function(b) { b.classList.remove('selected'); });
+  document.getElementById('aksi-' + aksi).classList.add('selected');
+
+  // Reset SKU saat ganti aksi (source bisa beda)
+  clearSku();
+
+  // Update placeholder SKU input sesuai aksi
+  var skuInput = document.getElementById('sku-input');
+  if (aksi === 'MASUK') {
+    skuInput.placeholder = 'Ketik kode atau nama barang...';
+  } else {
+    var hint = binSkuData.length
+      ? binSkuData.length + ' barang tersedia di bin ini'
+      : 'Tidak ada barang di bin ini';
+    skuInput.placeholder = hint;
+  }
+
+  // Prodate: readonly untuk KELUAR/PINDAH (hanya dari chips), editable untuk MASUK
+  var prodateEl = document.getElementById('f-prodate');
+  if (aksi === 'MASUK') {
+    prodateEl.removeAttribute('readonly');
+    prodateEl.style.cursor = '';
+    prodateEl.style.background = '';
+  } else {
+    prodateEl.setAttribute('readonly', true);
+    prodateEl.style.cursor = 'default';
+    prodateEl.style.background = 'var(--surface)';
+  }
+  if (aksi === 'PINDAH') {
+    document.getElementById('bin-tujuan-wrap').classList.add('show');
+    setTujuanMode('racking'); // reset ke racking setiap pilih PINDAH
+  } else {
+    document.getElementById('bin-tujuan-wrap').classList.remove('show');
+    state.binTujuan = null;
+    document.getElementById('bin-tujuan-input').value = '';
+    document.getElementById('bin-tujuan-custom').value = '';
+  }
+  updateSubmitState();
+}
+
+// ═══════════════════════════════════════
+// SKU SEARCH
+// ═══════════════════════════════════════
+function renderSkuResults(list) {
+  var res = document.getElementById('sku-results');
+  res.innerHTML = list.map(function(m) {
+    var extra = (m.pallet !== undefined)
+      ? '<div class="sku-stok">' + m.pallet + ' pallet</div>'
+      : '';
+    return '<div class="sku-item" onclick="selectSku(\'' + m.kode + '\', \'' + escHtml(m.nama) + '\')">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center">'
+      + '<div><div class="sku-code">' + m.kode + '</div>'
+      + '<div class="sku-name">' + m.nama + '</div></div>'
+      + extra + '</div></div>';
+  }).join('');
+  res.style.display = 'block';
+}
+
+function selectSku(kode, nama) {
+  state.sku = { kode: kode, nama: nama };
+  state.std = null;
+  state.maxPallet = null;
+  document.getElementById('sku-input').value = kode + ' — ' + nama;
+  document.getElementById('sku-results').style.display = 'none';
+  document.getElementById('sel-code').textContent = kode;
+  document.getElementById('sel-name').textContent = nama;
+  document.getElementById('sku-selected').classList.add('show');
+  document.getElementById('sku-clear').classList.add('show');
+  document.getElementById('sku-input').blur();
+  // Load STD — showProdateChips dipanggil di dalam callback setelah STD siap
+  loadStdForSku(kode);
+  updateSubmitState();
+}
+
+function loadStdForSku(kode) {
+  document.getElementById('std-info').style.display = 'none';
+  document.getElementById('std-warn').style.display = 'none';
+  document.getElementById('f-total-karton').value = '';
+
+  gasCall('getStdBySku', kode,
+    function(std) {
+      state.std = std > 0 ? std : null;
+      showStdInfo();
+      calcTotal();
+      if (state.aksi && state.aksi !== 'MASUK') showProdateChips(kode);
+    },
+    function() {
+      state.std = null;
+      showStdInfo();
+      if (state.aksi && state.aksi !== 'MASUK') showProdateChips(kode);
+    }
+  );
+}
+
+function showStdInfo() {
+  var infoEl = document.getElementById('std-info');
+  var warnEl = document.getElementById('std-warn');
+  if (state.std) {
+    document.getElementById('std-info-text').textContent = 'STD: ' + state.std + ' karton/pallet';
+    infoEl.style.display = 'block';
+    warnEl.style.display = 'none';
+  } else {
+    infoEl.style.display = 'none';
+    warnEl.style.display = 'block';
+  }
+}
+
+function validatePallet() {
+  var totalKarton = parseInt(document.getElementById('f-total-karton').value) || 0;
+  var warnEl   = document.getElementById('pallet-warn');
+  var palletEl = document.getElementById('f-pallet');
+  var maxKtn   = state.maxKarton;
+  if (state.aksi && state.aksi !== 'MASUK' && maxKtn !== null && maxKtn !== undefined && maxKtn > 0 && totalKarton > maxKtn) {
+    var maxPlt = state.maxPallet || 0;
+    warnEl.innerHTML = '❌ Total karton (' + totalKarton + ') melebihi stok tersedia (' + maxPlt + ' plt / ' + maxKtn + ' ktn)';
+    warnEl.style.display = 'block';
+    palletEl.style.borderColor = 'var(--accent2)';
+  } else {
+    warnEl.style.display = 'none';
+    palletEl.style.borderColor = '';
+  }
+  updateSubmitState();
+}
+
+function calcTotal() {
+  var pallet  = parseInt(document.getElementById('f-pallet').value)  || 0;
+  var pecahan = parseInt(document.getElementById('f-pecahan').value) || 0;
+  var totalEl = document.getElementById('f-total-karton');
+  if (state.std) {
+    totalEl.value = (pallet * state.std) + pecahan;
+  } else {
+    totalEl.value = pecahan > 0 ? pecahan : '';
+  }
+  validatePallet();
+}
+
+function showProdateChips(skuKode) {
+  var chipsWrap   = document.getElementById('prodate-chips');
+  var prodateInput = document.getElementById('f-prodate');
+
+  var skuEntry = binSkuData.filter(function(s) { return s.kode === skuKode; })[0];
+
+  if (!skuEntry || !skuEntry.prodates || !skuEntry.prodates.length) {
+    chipsWrap.style.display = 'none';
+    // Tampilkan warning tidak ada stok
+    var warnEl = document.getElementById('pallet-warn');
+    warnEl.innerHTML = '❌ Tidak ada stok barang ini di bin <b>' + state.binLoc + '</b>';
+    warnEl.style.display = 'block';
+    state.maxKarton = 0;
+    updateSubmitState();
+    return;
+  }
+
+  var prodates = skuEntry.prodates; // sudah urut FIFO dari GAS
+
+  function selectProdate(pd) {
+    prodateInput.value = prodateToDanteInput(pd.prodate);
+    state.selectedProdate = pd.prodate;
+    state.maxPallet = pd.pallet;
+    state.maxKarton = pd.karton; // patokan validasi
+    if (state.tipe === 'EKSPOR' && pd.quotation) {
+      document.getElementById('f-quotation').value = pd.quotation;
+    }
+    showStokInfo(pd.pallet, pd.karton);
+    updateSubmitState();
+  }
+
+  if (prodates.length === 1) {
+    selectProdate(prodates[0]);
+    chipsWrap.style.display = 'none';
+    return;
+  }
+
+  // Tampilkan chips
+  chipsWrap.innerHTML = prodates.map(function(p, idx) {
+    var isFirst = idx === 0;
+    var qtTag   = (state.tipe === 'EKSPOR' && p.quotation)
+      ? ' <span style="font-size:10px;color:var(--ekspor)">· ' + p.quotation + '</span>' : '';
+    var stokLabel = p.karton > 0 ? p.karton + ' ktn' : p.pallet + ' plt';
+    return '<div class="prodate-chip' + (isFirst ? ' fifo-first' : '') + '" '
+      + 'data-prodate="' + p.prodate + '" data-pallet="' + p.pallet + '" data-karton="' + (p.karton||0) + '" data-qt="' + (p.quotation||'') + '" '
+      + 'onclick="pilihProdateChip(this)">'
+      + '<span>' + p.prodate + '</span>'
+      + '<span class="chip-pallet">(' + stokLabel + ')</span>'
+      + qtTag
+      + '</div>';
+  }).join('');
+  chipsWrap.style.display = 'flex';
+
+  // Auto-select FIFO pertama
+  var firstChip = chipsWrap.querySelector('.prodate-chip');
+  if (firstChip) {
+    firstChip.classList.add('selected');
+    selectProdate({ prodate: prodates[0].prodate, pallet: prodates[0].pallet, karton: prodates[0].karton || 0, quotation: prodates[0].quotation || '' });
+  }
+}
+
+function pilihProdateChip(el) {
+  document.querySelectorAll('.prodate-chip').forEach(function(c) { c.classList.remove('selected'); });
+  el.classList.add('selected');
+  var prodate   = el.getAttribute('data-prodate');
+  var pallet    = parseInt(el.getAttribute('data-pallet')) || 0;
+  var karton    = parseInt(el.getAttribute('data-karton')) || 0;
+  var quotation = el.getAttribute('data-qt') || '';
+  document.getElementById('f-prodate').value = prodateToDanteInput(prodate);
+  state.selectedProdate = prodate;
+  state.maxPallet = pallet;
+  state.maxKarton = karton;
+  if (state.tipe === 'EKSPOR' && quotation) {
+    document.getElementById('f-quotation').value = quotation;
+  }
+  showStokInfo(pallet, karton);
+  updateSubmitState();
+}
+
+function showStokInfo(pallet, karton) {
+  var el = document.getElementById('stok-info');
+  if (!el) return;
+  if (state.aksi !== 'MASUK') {
+    var txt = 'Tersedia: ' + pallet + ' plt';
+    if (karton > 0) txt += ' (' + karton + ' ktn)';
+    el.textContent = txt;
+    el.style.display = 'inline';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// Konversi "2025-01-07" → "07-Jan-2025" untuk dibandingkan dengan data sheet
+function convertDateToSheetFormat(dateStr) {
+  if (!dateStr) return '';
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  var isIso = parts[0].length === 4;
+  if (isIso) {
+    var d = parts[2];
+    var m = months[parseInt(parts[1], 10) - 1] || parts[1];
+    var y = parts[0];
+    return d + '-' + m + '-' + y;
+  }
+  return dateStr;
+}
+
+// Konversi "01-Jan-2025" → "2025-01-01" untuk input[type=date]
+function prodateToDanteInput(pd) {
+  if (!pd) return '';
+  var months = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
+                 jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
+  var parts = pd.toLowerCase().split('-');
+  if (parts.length !== 3) return '';
+  var d = parts[0].length === 1 ? '0' + parts[0] : parts[0];
+  var m = months[parts[1]] || '01';
+  var y = parts[2];
+  return y + '-' + m + '-' + d;
+}
+
+function clearSku() {
+  state.sku = null;
+  state.std = null;
+  state.selectedProdate = null;
+  state.maxPallet = null;
+  document.getElementById('sku-input').value = '';
+  document.getElementById('sku-results').style.display = 'none';
+  document.getElementById('sku-selected').classList.remove('show');
+  document.getElementById('sku-clear').classList.remove('show');
+  document.getElementById('prodate-chips').style.display = 'none';
+  document.getElementById('prodate-chips').innerHTML = '';
+  document.getElementById('f-prodate').value = '';
+  document.getElementById('f-pallet').value = '';
+  document.getElementById('f-pallet').style.borderColor = '';
+  document.getElementById('f-pecahan').value = '';
+  document.getElementById('f-total-karton').value = '';
+  document.getElementById('std-info').style.display = 'none';
+  document.getElementById('std-warn').style.display = 'none';
+  document.getElementById('pallet-warn').style.display = 'none';
+  var stokEl = document.getElementById('stok-info');
+  if (stokEl) stokEl.style.display = 'none';
+  updateSubmitState();
+}
+
+function escHtml(s) {
+  return s.replace(/'/g, "\\'");
+}
+
+// ═══════════════════════════════════════
+// OPERATOR
+// ═══════════════════════════════════════
+function pilihOp(el, nama) {
+  state.operator = nama;
+  document.querySelectorAll('.op-chip').forEach(function(c) { c.classList.remove('selected'); });
+  el.classList.add('selected');
+  updateSubmitState();
+}
+
+// ═══════════════════════════════════════
+// VALIDATE & SUBMIT
+// ═══════════════════════════════════════
+function updateSubmitState() {
+  var ok = state.binLoc && state.aksi && state.sku && state.operator;
+  if (state.aksi === 'PINDAH') ok = ok && state.binTujuan;
+
+  if (state.aksi && state.aksi !== 'MASUK') {
+    // Wajib ada prodate yang valid (dari chips)
+    var prodate = document.getElementById('f-prodate').value;
+    if (!prodate || !state.selectedProdate) ok = false;
+    // Blok jika tidak ada stok sama sekali
+    else if (state.maxKarton === 0) ok = false;
+    // Blok jika total karton melebihi stok
+    else if (state.maxKarton > 0) {
+      var totalKarton = parseInt(document.getElementById('f-total-karton').value) || 0;
+      if (totalKarton > state.maxKarton) ok = false;
+    }
+  }
+  document.getElementById('submit-btn').disabled = !ok;
+}
+
+function submitForm() {
+  var pallet      = document.getElementById('f-pallet').value.trim();
+  var pecahan     = parseInt(document.getElementById('f-pecahan').value) || 0;
+  var totalKarton = parseInt(document.getElementById('f-total-karton').value) || 0;
+  var prodate     = document.getElementById('f-prodate').value;
+  var quotation   = document.getElementById('f-quotation').value.trim();
+
+  if (!pallet && pecahan === 0) { showToast('⚠️ Isi jumlah pallet atau pecahan'); return; }
+  if (!prodate) { showToast('⚠️ Isi tanggal prodate'); return; }
+  if (state.tipe === 'EKSPOR' && !quotation) { showToast('⚠️ Isi nomor quotation'); return; }
+
+  // Validasi prodate untuk KELUAR/PINDAH — harus ada di stok bin
+  if (state.aksi !== 'MASUK' && binSkuData.length) {
+    var skuEntry = binSkuData.filter(function(s) { return s.kode === state.sku.kode; })[0];
+    if (skuEntry && skuEntry.prodates && skuEntry.prodates.length) {
+      // Konversi prodate input (yyyy-MM-dd) ke format dd-MMM-yyyy untuk dibandingkan
+      var inputConverted = convertDateToSheetFormat(prodate);
+      var validProdates  = skuEntry.prodates.map(function(p) { return p.prodate; });
+      if (!validProdates.includes(inputConverted)) {
+        showToast('❌ Prodate ' + inputConverted + ' tidak tersedia di bin ini', 3500);
+        document.getElementById('f-prodate').style.borderColor = 'var(--accent2)';
+        return;
+      }
+      document.getElementById('f-prodate').style.borderColor = '';
+    }
+  }
+
+  var payload = {
+    tipe:        state.tipe,
+    binLoc:      state.binLoc,
+    binTujuan:   state.binTujuan || '',
+    aksi:        state.aksi,
+    skuKode:     state.sku.kode,
+    skuNama:     state.sku.nama,
+    pallet:      Number(pallet) || 0,
+    pecahan:     pecahan,
+    totalKarton: totalKarton,
+    std:         state.std || 0,
+    prodate:     prodate,
+    quotation:   quotation,
+    operator:    state.operator,
+    keterangan:  document.getElementById('f-keterangan').value.trim(),
+    timestamp:   new Date().toISOString()
+  };
+
+  showLoading(true);
+
+  gasCall('saveBinMovement', payload,
+    function(res) {
+      showLoading(false);
+      if (res && res.ok) {
+        showSuccess(payload);
+      } else {
+        showToast('❌ Gagal: ' + (res ? res.msg : 'Error'));
+      }
+    },
+    function(err) {
+      showLoading(false);
+      showToast('❌ Error: ' + ((err && err.message) || 'Gagal'));
+    }
+  );
+}
+
+function showSuccess(payload) {
+  var kartonInfo = payload.totalKarton ? ' · ' + payload.totalKarton + ' ktn' : '';
+  var detail = payload.aksi + ' · ' + payload.skuNama
+    + '\n' + payload.binLoc
+    + (payload.binTujuan ? ' → ' + payload.binTujuan : '')
+    + '\n' + payload.pallet + ' plt' + (payload.pecahan ? ' + ' + payload.pecahan + ' ktn pecahan' : '') + kartonInfo
+    + ' · Op. ' + payload.operator
+    + (payload.keterangan ? '\n📝 ' + payload.keterangan : '');
+  document.getElementById('success-detail').textContent = detail;
+  showScreen('screen-success');
+}
+
+function lanjutScanBaru() {
+  var tipe = state.tipe;
+  resetState();
+  state.tipe = tipe;
+  document.getElementById('bin-loc-input').value  = '';
+  document.getElementById('bin-loc-custom').value = '';
+  document.getElementById('bin-confirm-btn').disabled = true;
+  setBinMode('racking');
+  showScreen('screen-bin');
+  setTimeout(function() { document.getElementById('bin-loc-input').focus(); }, 300);
+}
+
+function lanjutBinSama() {
+  var savedBin = state.binLoc;
+  resetState();
+  state.binLoc = savedBin;
+  document.getElementById('form-bin-display').textContent = savedBin;
+  document.getElementById('form-header-sub').textContent = 'Bin: ' + savedBin;
+  setDefaultProdate();
+  showScreen('screen-form');
+  autoSelectMasuk();
+}
+
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
+function showLoading(on) {
+  document.getElementById('loading-overlay').classList.toggle('show', on);
+}
+
+function showToast(msg, dur) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, dur || 2500);
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// ═══════════════════════════════════════
+// SEARCH POSISI BARANG
+// ═══════════════════════════════════════
+var searchTipe = 'SEMUA';
+
+function setSearchTipe(tipe) {
+  searchTipe = tipe;
+  document.querySelectorAll('.search-tipe-btn').forEach(function(b) {
+    b.classList.remove('active','peta-active');
+  });
+  var btn = document.getElementById('stipe-' + tipe);
+  if (tipe === 'PETA') {
+    btn.classList.add('peta-active');
+  } else {
+    btn.classList.add('active');
+  }
+
+  // Toggle search fields vs peta pane
+  var searchFields = ['wrap-search-prodate','wrap-search-quotation'];
+  var searchElements = ['search-sku-input','search-btn','search-results-wrap','search-empty'];
+  var isPeta = tipe === 'PETA';
+
+  document.querySelector('.form-section:nth-child(2)') && (
+    document.querySelectorAll('#screen-search .form-section')[1].style.display = isPeta ? 'none' : ''
+  );
+  document.getElementById('search-btn').style.display         = isPeta ? 'none' : '';
+  document.getElementById('search-results-wrap').style.display = 'none';
+  document.getElementById('search-empty').style.display        = 'none';
+  document.getElementById('peta-pane').style.display = isPeta ? 'block' : 'none';
+  document.getElementById('wrap-search-quotation').style.display =
+    (!isPeta && (tipe === 'EKSPOR' || tipe === 'SEMUA')) ? 'block' : 'none';
+
+  clearSearchResults();
+  if (isPeta) petaLoadMap();
+}
+
+// ══ PETA SEBARAN ══
+var _petaData   = null;
+var _petaLoaded = false;
+
+var PETA_CAP_CFG = [
+  {l:'A',f:1, t:28,c:36},{l:'B',f:1, t:25,c:30},{l:'C',f:1, t:25,c:30},
+  {l:'D',f:1, t:25,c:24},{l:'E',f:1, t:25,c:18},{l:'F',f:1, t:25,c:24},
+  {l:'G',f:1, t:25,c:30},{l:'G',f:26,t:32,c:24},
+  {l:'H',f:1, t:35,c:36},
+  {l:'I',f:1, t:17,c:12},{l:'I',f:18,t:31,c:18},{l:'I',f:32,t:43,c:24}
+];
+var PETA_MAP_ROWS = [
+  {rows:[{l:'A',max:28}]}, null,
+  {rows:[{l:'B',max:25},{l:'C',max:25}]}, null,
+  {rows:[{l:'D',max:25},{l:'E',max:25}]}, null,
+  {rows:[{l:'F',max:25},{l:'G',max:32}]}, null,
+  {rows:[{l:'H',max:35}]}, null,
+  {rows:[{l:'I',max:43}]}
+];
+var PETA_MAX_COL = 43;
+
+function petaCapacity(bin) {
+  var m = bin.match(/^([A-Z]+)(\d+)$/);
+  if (!m) return 0;
+  var L = m[1], n = parseInt(m[2]);
+  for (var i = 0; i < PETA_CAP_CFG.length; i++) {
+    var c = PETA_CAP_CFG[i];
+    if (c.l === L && n >= c.f && n <= c.t) return c.c;
+  }
+  return 0;
+}
+
+function petaColorClass(used, cap) {
+  if (!cap || used === 0) return 'peta-empty';
+  var p = used / cap * 100;
+  if (p < 50)  return 'peta-green';
+  if (p < 75)  return 'peta-yellow';
+  if (p < 100) return 'peta-orange';
+  return 'peta-red';
+}
+
+function petaRefresh() {
+  _petaLoaded = false;
+  _petaData   = null;
+  petaLoadMap();
+}
+
+function petaLoadMap() {
+  if (_petaLoaded && _petaData) { petaRenderMap(_petaData); return; }
+  document.getElementById('peta-map-wrap').innerHTML =
+    '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px"><div style="font-size:28px;margin-bottom:8px">⏳</div>Memuat data...</div>';
+  gasCall('getBinCurrent', null,
+    function(data) {
+      _petaData   = data || [];
+      _petaLoaded = true;
+      petaRenderMap(_petaData);
+    },
+    function(e) {
+      document.getElementById('peta-map-wrap').innerHTML =
+        '<div style="padding:40px;text-align:center;color:#fc8181;font-size:12px">❌ ' + ((e && e.message) || 'Gagal memuat') + '</div>';
+    }
+  );
+}
+
+function petaRenderMap(rawData) {
+  // Agregasi per bin: pallet efektif
+  var binMap = {};
+  rawData.forEach(function(r) {
+    var k = r.binLoc;
+    if (!binMap[k]) binMap[k] = { used:0, items:[] };
+    binMap[k].used += (r.pallet||0) + ((r.pecahan||0) > 0 ? 1 : 0);
+    binMap[k].items.push(r);
+  });
+
+  // Header nomor
+  var html = '<div class="peta-num-hdr">';
+  for (var n = 1; n <= PETA_MAX_COL; n++) {
+    html += '<span' + (n % 5 === 0 ? ' class="tick"' : '') + '>' + (n % 5 === 0 ? n : '') + '</span>';
+  }
+  html += '</div>';
+
+  PETA_MAP_ROWS.forEach(function(entry) {
+    if (!entry) { html += '<div class="peta-gap"></div>'; return; }
+    html += '<div class="peta-row-group">';
+    entry.rows.forEach(function(rowDef) {
+      html += '<div class="peta-row"><div class="peta-row-lbl">' + rowDef.l + '</div>';
+      for (var n = 1; n <= PETA_MAX_COL; n++) {
+        if (n > rowDef.max) { html += '<div class="peta-void"></div>'; continue; }
+        var bin  = rowDef.l + n;
+        var cap  = petaCapacity(bin);
+        var info = binMap[bin] || { used:0, items:[] };
+        var cls  = petaColorClass(info.used, cap);
+        var pct  = cap ? Math.round(info.used/cap*100) : 0;
+        html += '<div class="peta-cell ' + cls + '" onclick="petaShowPopup(\'' + bin + '\')" title="' + bin + ' ' + pct + '%">' + n + '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
+  document.getElementById('peta-map-wrap').innerHTML = html;
+
+  // ── Lain-lain: bin tidak dikenal di racking standar ──
+  var llBins = Object.keys(binMap).filter(function(k){ return petaCapacity(k) === 0; });
+  var llEl   = document.getElementById('peta-lainlain');
+  if (llBins.length) {
+    llBins.sort();
+    var llHtml = '';
+    llBins.forEach(function(loc) {
+      var info  = binMap[loc];
+      var names = info.items.slice(0,2).map(function(i){ return i.skuNama||i.skuKode; }).join(', ')
+                + (info.items.length > 2 ? '…' : '');
+      llHtml += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;cursor:pointer" onclick="petaShowPopup(\''+escHtml(loc)+'\')">'
+              + '<div style="font-size:12px;font-weight:800;color:#63b3ed">📍 '+escHtml(loc)+'</div>'
+              + '<div style="font-size:13px;font-weight:800;color:#f6e05e;margin:2px 0">'+info.used+' plt efektif</div>'
+              + '<div style="font-size:10px;color:var(--muted)">'+info.items.length+' SKU · '+escHtml(names)+'</div>'
+              + '</div>';
+    });
+    llEl.innerHTML = '<div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📍 Lain-lain ('+llBins.length+' lokasi)</div>'
+                   + '<div style="display:flex;flex-direction:column;gap:8px">'+llHtml+'</div>';
+    llEl.style.display = '';
+  } else {
+    llEl.style.display = 'none';
+  }
+}
+
+function petaShowPopup(bin) {
+  var cap   = petaCapacity(bin);
+  var items = [];
+  var total = 0;
+  (_petaData||[]).forEach(function(r) {
+    if (r.binLoc === bin) { items.push(r); total += (r.pallet||0) + ((r.pecahan||0)>0?1:0); }
+  });
+  var pct = cap ? Math.round(total/cap*100) : 0;
+
+  document.getElementById('petaPopupTitle').textContent = '📦 ' + bin;
+  document.getElementById('petaPopupCap').textContent   =
+    cap ? (total + ' / ' + cap + ' plt efektif (' + pct + '%)') : 'Lokasi lain-lain · ' + total + ' plt efektif';
+
+  var body = '';
+  if (!items.length) {
+    body = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:12px">📭 Rack kosong</div>';
+  } else {
+    items.sort(function(a,b){ return String(a.prodate).localeCompare(String(b.prodate)); });
+    items.forEach(function(r) {
+      var eff    = (r.pallet||0) + ((r.pecahan||0)>0?1:0);
+      var tc     = r.tipe==='LOKAL' ? '#68d391' : '#a78bfa';
+      var plt    = r.pallet  || 0;
+      var pec    = r.pecahan || 0;
+      var ktn    = r.karton  || 0;
+      var std    = plt > 0 ? Math.round((ktn - pec) / plt) : 0;
+      var ktnStr = '';
+      if (std > 0) {
+        ktnStr = plt + 'p@' + std + (pec > 0 ? ' + ' + pec : '') + ' (' + ktn + ')';
+      } else if (ktn > 0) {
+        ktnStr = ktn + ' ktn';
+      }
+      body += '<div class="peta-pop-row">'
+        + '<div class="peta-pop-sku">' + escHtml(r.skuKode||'') + '</div>'
+        + '<div class="peta-pop-nama">' + escHtml(r.skuNama||'') + '<br>'
+          + '<span style="color:'+tc+';font-size:10px;font-weight:700">'+r.tipe+'</span>'
+          + (r.quotation ? ' <span style="color:#a78bfa;font-size:10px">'+escHtml(r.quotation)+'</span>' : '')
+          + '</div>'
+        + '<div style="text-align:right;white-space:nowrap">'
+          + '<div class="peta-pop-plt">' + eff + ' plt</div>'
+          + '<div style="font-size:10px;color:#68d391;font-weight:700">' + ktnStr + '</div>'
+          + '</div>'
+        + '<div class="peta-pop-prodate">' + escHtml(r.prodate||'') + '</div>'
+        + '</div>';
+    });
+    body += '<div style="text-align:right;font-size:10px;color:var(--muted);margin-top:8px">* Efektif = pallet + 1 jika ada pecahan</div>';
+  }
+  document.getElementById('petaPopupBody').innerHTML = body;
+  document.getElementById('petaOverlay').classList.add('show');
+}
+
+function petaClosePopup() {
+  document.getElementById('petaOverlay').classList.remove('show');
+}
+
+
+
+function onSearchInput() {
+  var q = document.getElementById('search-sku-input').value.trim();
+  document.getElementById('search-clear').style.display = q ? 'block' : 'none';
+  // Suggest SKU
+  var res = document.getElementById('search-sku-results');
+  if (!q) { res.style.display = 'none'; return; }
+  var matches = skuData.filter(function(s) {
+    return s.kode.toLowerCase().includes(q.toLowerCase()) || s.nama.toLowerCase().includes(q.toLowerCase());
+  }).slice(0, 8);
+  if (!matches.length) { res.style.display = 'none'; return; }
+  res.innerHTML = matches.map(function(m) {
+    return '<div class="sku-item" onclick="selectSearchSku(\'' + m.kode + '\', \'' + escHtml(m.nama) + '\')">'
+      + '<div class="sku-code">' + m.kode + '</div>'
+      + '<div class="sku-name">' + m.nama + '</div></div>';
+  }).join('');
+  res.style.display = 'block';
+}
+
+function onSearchSkuFocus() {
+  var q = document.getElementById('search-sku-input').value.trim();
+  if (q) onSearchInput();
+}
+
+function selectSearchSku(kode, nama) {
+  document.getElementById('search-sku-input').value = kode + ' — ' + nama;
+  document.getElementById('search-sku-results').style.display = 'none';
+  document.getElementById('search-clear').style.display = 'block';
+}
+
+function clearSearch() {
+  document.getElementById('search-sku-input').value = '';
+  document.getElementById('search-prodate').value = '';
+  document.getElementById('search-binloc').value = '';
+  document.getElementById('search-quotation').value = '';
+  document.getElementById('search-clear').style.display = 'none';
+  document.getElementById('search-sku-results').style.display = 'none';
+  clearSearchResults();
+}
+
+function clearSearchResults() {
+  document.getElementById('search-results-wrap').style.display = 'none';
+  document.getElementById('search-empty').style.display = 'none';
+  document.getElementById('search-results').innerHTML = '';
+}
+
+function doSearch() {
+  var raw       = document.getElementById('search-sku-input').value.trim();
+  var q         = raw.includes(' — ') ? raw.split(' — ')[0].trim() : raw;
+  var prodateRaw = document.getElementById('search-prodate').value.trim();
+  var prodate   = prodateRaw ? convertDateToSheetFormat(prodateRaw) : '';
+  var binloc    = document.getElementById('search-binloc').value.trim().toUpperCase();
+  var quotation = document.getElementById('search-quotation').value.trim();
+
+  document.getElementById('search-sku-results').style.display = 'none';
+
+  if (!q && !prodate && !binloc && !quotation) {
+    showToast('⚠️ Isi minimal satu kata kunci');
+    return;
+  }
+
+  var filters = {
+    tipe:      searchTipe !== 'SEMUA' ? searchTipe : '',
+    sku:       q,
+    prodate:   prodate,
+    bin:       binloc,
+    quotation: quotation
+  };
+
+  showLoading(true);
+  clearSearchResults();
+
+  gasCall('searchBinPosition', filters,
+    function(data) {
+      showLoading(false);
+      renderSearchResults(data || []);
+    },
+    function(err) {
+      showLoading(false);
+      showToast('❌ Error: ' + ((err && err.message) || 'Gagal'));
+    }
+  );
+}
+
+function renderSearchResults(data) {
+  var wrap  = document.getElementById('search-results-wrap');
+  var empty = document.getElementById('search-empty');
+  var res   = document.getElementById('search-results');
+
+  if (!data.length) {
+    empty.style.display = 'block';
+    wrap.style.display  = 'none';
+    return;
+  }
+
+  document.getElementById('search-count').textContent = data.length + ' lokasi';
+  res.innerHTML = data.map(function(r) {
+    var plt = r.pallet  || 0;
+    var pec = r.pecahan || 0;
+    var ktn = r.karton  || 0;
+    var eff = plt + (pec > 0 ? 1 : 0);
+    var std = plt > 0 ? Math.round((ktn - pec) / plt) : 0;
+    var ktnStr = '';
+    if (std > 0) {
+      ktnStr = plt + 'p@' + std + (pec > 0 ? ' + ' + pec : '') + ' (' + ktn + ')';
+    } else if (ktn > 0) {
+      ktnStr = ktn + ' ktn';
+    }
+    var palletLabel = eff + ' plt' + (pec > 0 ? ' efektif' : '');
+    var qt = r.quotation ? '<span class="rc-tag">' + r.quotation + '</span>' : '';
+    var pd = r.prodate   ? '<span class="rc-tag">' + r.prodate + '</span>'   : '';
+    return '<div class="result-card">'
+      + '<div class="rc-bin">' + r.binLoc + '</div>'
+      + '<div class="rc-info">'
+      + '<div class="rc-sku">' + r.skuKode + '</div>'
+      + '<div class="rc-nama">' + r.skuNama + '</div>'
+      + '<div class="rc-meta">'
+      + '<span class="rc-tag pallet">' + palletLabel + '</span>'
+      + (ktnStr ? '<span class="rc-tag" style="color:#68d391;border-color:#68d39140;background:#68d39110;font-size:11px;">' + ktnStr + '</span>' : '')
+      + pd + qt
+      + '<span class="rc-tag tipe ' + r.tipe.toLowerCase() + '">' + r.tipe + '</span>'
+      + '</div></div></div>';
+  }).join('');
+
+  wrap.style.display = 'block';
+  empty.style.display = 'none';
+}
+
+// ═══════════════════════════════════════
+// SERVICE WORKER — PWA install support
+// ═══════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+
+</script>
+</body>
+</html>
