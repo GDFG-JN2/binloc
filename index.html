@@ -2565,14 +2565,25 @@ function startCamera() {
   var status = document.getElementById('scan-status');
   status.textContent = 'Memulai kamera...';
 
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    status.textContent = '❌ Kamera tidak didukung — gunakan input manual';
+    return;
+  }
+
   navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
   }).then(function(stream) {
     _scanStream = stream;
     video.srcObject = stream;
     video.play();
-    status.textContent = 'Arahkan ke QR Code...';
-    scanLoop();
+
+    if (typeof BarcodeDetector !== 'undefined') {
+      _scanDetector = new BarcodeDetector({ formats: ['qr_code'] });
+      status.textContent = '🔍 Arahkan ke QR Code...';
+      scanLoop();
+    } else {
+      status.textContent = '⚠️ Auto-scan tidak didukung — ketik kode manual di bawah';
+    }
   }).catch(function(err) {
     status.textContent = '❌ Kamera tidak bisa diakses — gunakan input manual';
   });
@@ -2580,51 +2591,23 @@ function startCamera() {
 
 function scanLoop() {
   var video  = document.getElementById('scan-video');
-  var canvas = document.getElementById('scan-canvas');
   var status = document.getElementById('scan-status');
-
-  if (!_scanStream) return;
-
-  // Cek jsQR sudah loaded
-  if (typeof jsQR === 'undefined') {
-    status.textContent = '⏳ Memuat library QR...';
-    setTimeout(scanLoop, 500);
-    return;
-  }
+  if (!_scanStream || !_scanDetector) return;
 
   _scanAnimFrame = requestAnimationFrame(function() {
-    try {
-      if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
-        canvas.width  = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.style.display = 'none';
-        // Downsample untuk performa lebih baik
-        var dw = Math.min(video.videoWidth, 640);
-        var dh = Math.round(video.videoHeight * dw / video.videoWidth);
-        canvas.width  = dw;
-        canvas.height = dh;
-        var ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(video, 0, 0, dw, dh);
-
-        var imageData = ctx.getImageData(0, 0, dw, dh);
-        var code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'attemptBoth'
-        });
-
-        if (code && code.data) {
-          status.textContent = '✅ QR: ' + code.data;
-          stopScanner();
-          setTimeout(function() { processScanResult(code.data); }, 150);
-        } else {
-          status.textContent = '🔍 Scanning...';
-          scanLoop();
-        }
+    if (!_scanStream || !_scanDetector) return;
+    _scanDetector.detect(video).then(function(codes) {
+      if (codes.length > 0) {
+        var raw = codes[0].rawValue;
+        status.textContent = '✅ QR: ' + raw;
+        stopScanner();
+        setTimeout(function() { processScanResult(raw); }, 150);
       } else {
         scanLoop();
       }
-    } catch(e) {
+    }).catch(function() {
       scanLoop();
-    }
+    });
   });
 }
 
@@ -3032,6 +3015,5 @@ if ('serviceWorker' in navigator) {
 }
 
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 </body>
 </html>
