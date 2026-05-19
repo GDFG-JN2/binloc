@@ -47,7 +47,12 @@ body {
 .screen { display: none; flex-direction: column; min-height: 100dvh; padding: 0; }
 .screen.active { display: flex; animation: screenFadeIn .22s ease; }
 
-@keyframes screenFadeIn {
+@keyframes scanLine {
+  0%   { top: 16%; opacity: 1; }
+  50%  { top: 82%; opacity: 1; }
+  100% { top: 16%; opacity: 1; }
+}
+
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
@@ -619,29 +624,44 @@ input:focus, select:focus {
       <div class="sub" id="scan-sub">Arahkan kamera ke QR Code</div>
     </div>
   </div>
-  <div class="screen-body" style="padding:16px;display:flex;flex-direction:column;gap:12px;">
-    <!-- Camera viewfinder -->
-    <div style="position:relative;border-radius:14px;overflow:hidden;background:#1e2533;aspect-ratio:4/3;">
+  <div class="screen-body" style="padding:0;display:flex;flex-direction:column;gap:0;">
+    <!-- Camera viewfinder — full width, square QR style -->
+    <div style="position:relative;width:100%;aspect-ratio:1/1;background:#000;overflow:hidden;">
       <video id="scan-video" style="width:100%;height:100%;object-fit:cover;" playsinline autoplay muted></video>
       <canvas id="scan-canvas" style="display:none;"></canvas>
-      <!-- Scan frame overlay -->
-      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-        <div style="width:70%;height:40%;border:2px solid rgba(37,99,235,0.8);border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,0.35);">
-          <div style="position:absolute;top:0;left:0;width:20px;height:20px;border-top:3px solid #2563eb;border-left:3px solid #2563eb;border-radius:2px 0 0 0;"></div>
-          <div style="position:absolute;top:0;right:0;width:20px;height:20px;border-top:3px solid #2563eb;border-right:3px solid #2563eb;border-radius:0 2px 0 0;"></div>
-          <div style="position:absolute;bottom:0;left:0;width:20px;height:20px;border-bottom:3px solid #2563eb;border-left:3px solid #2563eb;border-radius:0 0 0 2px;"></div>
-          <div style="position:absolute;bottom:0;right:0;width:20px;height:20px;border-bottom:3px solid #2563eb;border-right:3px solid #2563eb;border-radius:0 0 2px 0;"></div>
-        </div>
+
+      <!-- Dark overlay dengan lubang persegi tengah -->
+      <div style="position:absolute;inset:0;pointer-events:none;">
+        <!-- Top -->
+        <div style="position:absolute;top:0;left:0;right:0;height:15%;background:rgba(0,0,0,0.55);"></div>
+        <!-- Bottom -->
+        <div style="position:absolute;bottom:0;left:0;right:0;height:15%;background:rgba(0,0,0,0.55);"></div>
+        <!-- Left -->
+        <div style="position:absolute;top:15%;bottom:15%;left:0;width:8%;background:rgba(0,0,0,0.55);"></div>
+        <!-- Right -->
+        <div style="position:absolute;top:15%;bottom:15%;right:0;width:8%;background:rgba(0,0,0,0.55);"></div>
+
+        <!-- Corner brackets — biru tebal -->
+        <div style="position:absolute;top:15%;left:8%;width:36px;height:36px;border-top:4px solid #2563eb;border-left:4px solid #2563eb;border-radius:4px 0 0 0;"></div>
+        <div style="position:absolute;top:15%;right:8%;width:36px;height:36px;border-top:4px solid #2563eb;border-right:4px solid #2563eb;border-radius:0 4px 0 0;"></div>
+        <div style="position:absolute;bottom:15%;left:8%;width:36px;height:36px;border-bottom:4px solid #2563eb;border-left:4px solid #2563eb;border-radius:0 0 0 4px;"></div>
+        <div style="position:absolute;bottom:15%;right:8%;width:36px;height:36px;border-bottom:4px solid #2563eb;border-right:4px solid #2563eb;border-radius:0 0 4px 0;"></div>
+
+        <!-- Scan line animasi -->
+        <div id="scan-line" style="position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,#2563eb,transparent);top:20%;animation:scanLine 2s ease-in-out infinite;"></div>
       </div>
-      <div id="scan-status" style="position:absolute;bottom:12px;left:0;right:0;text-align:center;color:#fff;font-size:11px;background:rgba(0,0,0,.5);padding:4px;"></div>
+
+      <!-- Status text -->
+      <div id="scan-status" style="position:absolute;bottom:0;left:0;right:0;text-align:center;color:#fff;font-size:12px;font-weight:600;background:rgba(0,0,0,0.65);padding:10px;"></div>
     </div>
-    <!-- Manual input fallback -->
-    <div style="display:flex;gap:8px;align-items:center;">
-      <input id="scan-manual-input" placeholder="Atau ketik kode manual..."
-        style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--mono);"
+
+    <!-- Manual input -->
+    <div style="padding:16px;display:flex;gap:8px;align-items:center;background:var(--surface);border-top:1px solid var(--border);">
+      <input id="scan-manual-input" placeholder="Ketik kode manual (bin/SKU)..."
+        style="flex:1;padding:11px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--mono);"
         onkeydown="if(event.key==='Enter') processScanResult(this.value.trim())">
       <button onclick="processScanResult(document.getElementById('scan-manual-input').value.trim())"
-        style="padding:10px 14px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;">OK</button>
+        style="padding:11px 16px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">OK</button>
     </div>
   </div>
 </div>
