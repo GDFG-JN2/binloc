@@ -549,80 +549,13 @@ input:focus, select:focus {
       <div class="card-label" style="color:var(--accent3)">Cari Posisi Barang</div>
       <div class="card-desc">Cari bin loc berdasarkan SKU / Prodate / Quotation</div>
     </div>
-    <div class="tipe-card" style="border-color:#3b82f640;background:#3b82f608;" onclick="showScreen('screen-riwayat')">
-      <div class="card-icon">📋</div>
-      <div class="card-label" style="color:#3b82f6">Riwayat Movement</div>
-      <div class="card-desc">History transaksi masuk / keluar / pindah</div>
-    </div>
+
   </div>
 
   <!-- Update App button -->
   <button onclick="updateApp()" id="btn-update-app" style="margin-top:20px;padding:8px 20px;background:none;border:1px solid var(--border);border-radius:20px;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--mono);display:flex;align-items:center;gap:6px;">
     🔄 <span id="update-app-label">Update App</span>
   </button>
-</div>
-
-<!-- ═══════════════════════════════
-     SCREEN: RIWAYAT MOVEMENT
-═══════════════════════════════ -->
-<div class="screen" id="screen-riwayat">
-  <div class="app-header">
-    <div class="back-btn" onclick="goHome()">←</div>
-    <div class="title-group">
-      <h2>Riwayat Movement</h2>
-      <div class="sub">History transaksi bin loc</div>
-    </div>
-  </div>
-  <div class="screen-body" style="padding:16px;">
-
-    <!-- Filter -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-        <div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Dari Tanggal</div>
-          <input type="date" id="rw-dari" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Sampai Tanggal</div>
-          <input type="date" id="rw-sampai" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-        <div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Bin Loc</div>
-          <input type="text" id="rw-bin" placeholder="cth: A-01" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">SKU / Nama</div>
-          <input type="text" id="rw-sku" placeholder="kode atau nama..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-        <div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Tipe</div>
-          <select id="rw-tipe" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
-            <option value="">Semua</option>
-            <option value="LOKAL">Lokal</option>
-            <option value="EKSPOR">Ekspor</option>
-          </select>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Aksi</div>
-          <select id="rw-aksi" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
-            <option value="">Semua</option>
-            <option value="MASUK">Masuk</option>
-            <option value="KELUAR">Keluar</option>
-            <option value="PINDAH">Pindah</option>
-          </select>
-        </div>
-      </div>
-      <button onclick="loadRiwayat()" style="width:100%;padding:10px;background:var(--accent);color:#f0f2f5;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--mono);">🔍 Cari</button>
-    </div>
-
-    <!-- Results -->
-    <div id="rw-info" style="font-size:11px;color:var(--muted);margin-bottom:8px;"></div>
-    <div id="rw-results"></div>
-  </div>
 </div>
 
 <!-- ═══════════════════════════════
@@ -700,6 +633,7 @@ input:focus, select:focus {
         <div class="search-tipe-btn" id="stipe-LOKAL"  onclick="setSearchTipe('LOKAL')">Lokal</div>
         <div class="search-tipe-btn" id="stipe-EKSPOR" onclick="setSearchTipe('EKSPOR')">Ekspor</div>
         <div class="search-tipe-btn" id="stipe-PETA"   onclick="setSearchTipe('PETA')">🗺️ Peta</div>
+        <div class="search-tipe-btn" id="stipe-RIWAYAT" onclick="setSearchTipe('RIWAYAT')">📋 Riwayat</div>
       </div>
     </div>
 
@@ -747,6 +681,54 @@ input:focus, select:focus {
     <div id="search-empty" style="display:none;text-align:center;padding:40px 0;color:var(--muted)">
       <div style="font-size:40px;margin-bottom:12px">📭</div>
       <div style="font-size:13px">Barang tidak ditemukan</div>
+    </div>
+
+    <!-- Riwayat Movement Pane -->
+    <div id="riwayat-pane" style="display:none;padding-bottom:80px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Dari Tanggal</div>
+            <input type="date" id="rw-dari" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Sampai Tanggal</div>
+            <input type="date" id="rw-sampai" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Bin Loc</div>
+            <input type="text" id="rw-bin" placeholder="cth: A-01" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">SKU / Nama</div>
+            <input type="text" id="rw-sku" placeholder="kode atau nama..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Tipe</div>
+            <select id="rw-tipe" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+              <option value="">Semua</option>
+              <option value="LOKAL">Lokal</option>
+              <option value="EKSPOR">Ekspor</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Aksi</div>
+            <select id="rw-aksi" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;color:var(--text);font-size:12px;font-family:var(--mono);">
+              <option value="">Semua</option>
+              <option value="MASUK">Masuk</option>
+              <option value="KELUAR">Keluar</option>
+              <option value="PINDAH">Pindah</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="loadRiwayat()" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--mono);">🔍 Cari</button>
+      </div>
+      <div id="rw-info" style="font-size:11px;color:var(--muted);margin-bottom:8px;"></div>
+      <div id="rw-results"></div>
     </div>
 
     <!-- Peta Sebaran -->
@@ -1047,9 +1029,8 @@ function showScreen(id) {
     s.classList.remove('active');
   });
   document.getElementById(id).classList.add('active');
-  if (id === 'screen-riwayat') {
-    initRiwayat();
-    loadRiwayat();
+  if (id === 'screen-search') {
+    // handled by setSearchTipe
   }
   // Push state for hardware back button
   history.pushState({ screen: id }, '', '');
@@ -1883,23 +1864,25 @@ function setSearchTipe(tipe) {
     btn.classList.add('active');
   }
 
-  // Toggle search fields vs peta pane
-  var searchFields = ['wrap-search-prodate','wrap-search-quotation'];
-  var searchElements = ['search-sku-input','search-btn','search-results-wrap','search-empty'];
-  var isPeta = tipe === 'PETA';
+  // Toggle search fields vs peta pane vs riwayat pane
+  var isPeta     = tipe === 'PETA';
+  var isRiwayat  = tipe === 'RIWAYAT';
+  var isSearch   = !isPeta && !isRiwayat;
 
   document.querySelector('.form-section:nth-child(2)') && (
-    document.querySelectorAll('#screen-search .form-section')[1].style.display = isPeta ? 'none' : ''
+    document.querySelectorAll('#screen-search .form-section')[1].style.display = isSearch ? '' : 'none'
   );
-  document.getElementById('search-btn').style.display         = isPeta ? 'none' : '';
+  document.getElementById('search-btn').style.display          = isSearch ? '' : 'none';
   document.getElementById('search-results-wrap').style.display = 'none';
   document.getElementById('search-empty').style.display        = 'none';
-  document.getElementById('peta-pane').style.display = isPeta ? 'block' : 'none';
+  document.getElementById('peta-pane').style.display           = isPeta    ? 'block' : 'none';
+  document.getElementById('riwayat-pane').style.display        = isRiwayat ? 'block' : 'none';
   document.getElementById('wrap-search-quotation').style.display =
-    (!isPeta && (tipe === 'EKSPOR' || tipe === 'SEMUA')) ? 'block' : 'none';
+    (isSearch && (tipe === 'EKSPOR' || tipe === 'SEMUA')) ? 'block' : 'none';
 
   clearSearchResults();
-  if (isPeta) petaLoadMap();
+  if (isPeta)    petaLoadMap();
+  if (isRiwayat) { initRiwayat(); loadRiwayat(); }
 }
 
 // ══ PETA SEBARAN ══
