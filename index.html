@@ -506,7 +506,6 @@ input:focus, select:focus {
 .prodate-chip.fifo-first { border-color: var(--accent3); }
 .prodate-chip.fifo-first::after { content: ' ★'; font-size: 10px; color: var(--accent3); margin-left: 2px; }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 </head>
 <body>
 
@@ -1175,7 +1174,7 @@ var binSkuData = [];  // SKU yg ada di bin ini (untuk KELUAR/PINDAH)
 // ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
-window.addEventListener('load', function() {
+window.addEventListener('DOMContentLoaded', function() {
   initListeners();
   // Langsung ke screen tipe tanpa tunggu SKU
   setTimeout(function() { showScreen('screen-tipe'); }, 400);
@@ -3020,5 +3019,6 @@ if ('serviceWorker' in navigator) {
 }
 
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js" async></script>
 </body>
 </html>
