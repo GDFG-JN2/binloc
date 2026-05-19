@@ -506,6 +506,7 @@ input:focus, select:focus {
 .prodate-chip.fifo-first { border-color: var(--accent3); }
 .prodate-chip.fifo-first::after { content: ' ★'; font-size: 10px; color: var(--accent3); margin-left: 2px; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 </head>
 <body>
 
@@ -555,7 +556,7 @@ input:focus, select:focus {
     <div class="tipe-card" style="border-color:#f43f5e40;background:#f43f5e08;" onclick="showScreen('screen-trial-pw')">
       <div class="card-icon">🧪</div>
       <div class="card-label" style="color:#f43f5e">Trial</div>
-      <div class="card-desc">Scan barcode — Transaksi & Opname</div>
+      <div class="card-desc">Scan QR Code — Transaksi & Opname</div>
     </div>
   </div>
 
@@ -616,7 +617,7 @@ input:focus, select:focus {
     <div class="back-btn" onclick="stopScanner();showScreen('screen-trial-home')">←</div>
     <div class="title-group">
       <h2 id="scan-title">Scanner</h2>
-      <div class="sub" id="scan-sub">Arahkan kamera ke barcode</div>
+      <div class="sub" id="scan-sub">Arahkan kamera ke QR Code</div>
     </div>
   </div>
   <div class="screen-body" style="padding:16px;display:flex;flex-direction:column;gap:12px;">
@@ -652,7 +653,7 @@ input:focus, select:focus {
 <div class="screen" id="screen-trial-masuk">
   <div class="app-header">
     <div class="back-btn" onclick="startTrialScan('transaksi')">←</div>
-    <div class="title-group"><h2>Transaksi Masuk</h2><div class="sub" id="tmasuk-sub">Scan Bin Loc tujuan</div></div>
+    <div class="title-group"><h2>Transaksi Masuk</h2><div class="sub" id="tmasuk-sub">Scan QR Bin tujuan</div></div>
   </div>
   <div class="screen-body" style="padding:16px;display:flex;flex-direction:column;gap:12px;">
     <!-- SKU info card -->
@@ -2498,7 +2499,7 @@ var _trialScannedSku = null; // { kode, nama, std }
 var _trialScannedBin = null; // bin loc string
 var _scanStream      = null; // MediaStream
 var _scanAnimFrame   = null; // requestAnimationFrame id
-var _scanDetector    = null; // BarcodeDetector instance
+var _scanDetector    = null; // jsQR (tidak dipakai sebagai object)
 var _scanPurpose     = null; // 'transaksi' | 'opname' | 'bin-for-masuk'
 
 function checkTrialPw() {
@@ -2524,10 +2525,10 @@ function startTrialScan(mode) {
   var sub   = document.getElementById('scan-sub');
   if (mode === 'transaksi') {
     title.textContent = 'Scan Barcode';
-    sub.textContent   = 'Scan SKU → Masuk  |  Scan Bin Loc → Keluar';
+    sub.textContent   = 'Scan QR SKU → Masuk  |  Scan QR Bin → Keluar';
   } else {
-    title.textContent = 'Scan Bin Loc';
-    sub.textContent   = 'Arahkan ke barcode bin untuk opname';
+    title.textContent = 'Scan QR Bin';
+    sub.textContent   = 'Arahkan ke QR Code bin untuk opname';
   }
   showScreen('screen-trial-scan');
   startCamera();
@@ -2537,8 +2538,8 @@ function startScanBinForMasuk() {
   _scanPurpose = 'bin-for-masuk';
   var title = document.getElementById('scan-title');
   var sub   = document.getElementById('scan-sub');
-  title.textContent = 'Scan Bin Loc';
-  sub.textContent   = 'Arahkan ke barcode bin tujuan';
+  title.textContent = 'Scan QR Bin';
+  sub.textContent   = 'Arahkan ke QR Code bin tujuan';
   showScreen('screen-trial-scan');
   startCamera();
 }
@@ -2558,17 +2559,8 @@ function startCamera() {
     _scanStream = stream;
     video.srcObject = stream;
     video.play();
-    status.textContent = 'Arahkan ke barcode...';
-
-    // Init BarcodeDetector
-    if ('BarcodeDetector' in window) {
-      BarcodeDetector.getSupportedFormats().then(function(formats) {
-        _scanDetector = new BarcodeDetector({ formats: formats });
-        scanLoop();
-      });
-    } else {
-      status.textContent = '⚠️ BarcodeDetector tidak didukung — gunakan input manual';
-    }
+    status.textContent = 'Arahkan ke QR Code...';
+    scanLoop();
   }).catch(function(err) {
     status.textContent = '❌ Kamera tidak bisa diakses — gunakan input manual';
   });
@@ -2579,27 +2571,28 @@ function scanLoop() {
   var canvas = document.getElementById('scan-canvas');
   var status = document.getElementById('scan-status');
 
-  if (!_scanDetector || !_scanStream) return;
+  if (!_scanStream) return;
 
   _scanAnimFrame = requestAnimationFrame(function() {
     if (video.readyState === video.HAVE_ENOUGH_DATA) {
       canvas.width  = video.videoWidth;
       canvas.height = video.videoHeight;
+      canvas.style.display = 'none';
       var ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      _scanDetector.detect(canvas).then(function(barcodes) {
-        if (barcodes.length > 0) {
-          var raw = barcodes[0].rawValue;
-          status.textContent = '✅ Terdeteksi: ' + raw;
-          stopScanner();
-          setTimeout(function() { processScanResult(raw); }, 300);
-        } else {
-          scanLoop();
-        }
-      }).catch(function() {
-        scanLoop();
+      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert'
       });
+
+      if (code && code.data) {
+        status.textContent = '✅ QR terbaca: ' + code.data;
+        stopScanner();
+        setTimeout(function() { processScanResult(code.data); }, 300);
+      } else {
+        scanLoop();
+      }
     } else {
       scanLoop();
     }
