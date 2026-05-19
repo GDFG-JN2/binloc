@@ -555,6 +555,11 @@ input:focus, select:focus {
       <div class="card-desc">History transaksi masuk / keluar / pindah</div>
     </div>
   </div>
+
+  <!-- Update App button -->
+  <button onclick="updateApp()" id="btn-update-app" style="margin-top:20px;padding:8px 20px;background:none;border:1px solid var(--border);border-radius:20px;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--mono);display:flex;align-items:center;gap:6px;">
+    🔄 <span id="update-app-label">Update App</span>
+  </button>
 </div>
 
 <!-- ═══════════════════════════════
@@ -2299,6 +2304,32 @@ function renderRiwayat(data) {
       + (r.keterangan ? '<div style="font-size:10px;color:var(--muted);margin-top:4px;font-style:italic;">'+r.keterangan+'</div>' : '')
       + '</div>';
   }).join('');
+}
+
+// ═══════════════════════════════════════
+// UPDATE APP — clear cache & reload
+// ═══════════════════════════════════════
+function updateApp() {
+  var label = document.getElementById('update-app-label');
+  label.textContent = 'Mengupdate...';
+
+  if ('serviceWorker' in navigator && 'caches' in window) {
+    caches.keys().then(function(keys) {
+      return Promise.all(keys.map(function(key) {
+        return caches.delete(key);
+      }));
+    }).then(function() {
+      return navigator.serviceWorker.getRegistrations();
+    }).then(function(regs) {
+      return Promise.all(regs.map(function(r) { return r.unregister(); }));
+    }).then(function() {
+      window.location.reload(true);
+    }).catch(function() {
+      window.location.reload(true);
+    });
+  } else {
+    window.location.reload(true);
+  }
 }
 
 // ═══════════════════════════════════════
