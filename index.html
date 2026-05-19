@@ -768,8 +768,23 @@ input:focus, select:focus {
       </div>
     </div>
 
-    <!-- SKU list -->
-    <div id="tkeluar-sku-list"></div>
+    <!-- SKU Dropdown -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Barang</div>
+      <!-- Selected display / trigger -->
+      <div id="tkeluar-sku-selected" onclick="toggleTrialKSkuDropdown()"
+        style="background:var(--surface);border:2px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div id="tkeluar-sku-display-kode" style="font-weight:700;font-size:13px;color:#2563eb;">Pilih barang...</div>
+          <div id="tkeluar-sku-display-nama" style="font-size:12px;color:var(--muted);margin-top:1px;"></div>
+        </div>
+        <div id="tkeluar-sku-chevron" style="color:var(--muted);font-size:14px;">▼</div>
+      </div>
+      <!-- Dropdown list -->
+      <div id="tkeluar-sku-dropdown" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-top:4px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.08);">
+        <div id="tkeluar-sku-list"></div>
+      </div>
+    </div>
 
     <!-- Form (muncul setelah pilih SKU + prodate) -->
     <div id="tkeluar-form" style="display:none;">
@@ -2946,29 +2961,57 @@ function loadTrialKeluar(bin) {
   });
 }
 
+var _trialKSkuData = [];
+
 function renderTrialKeluar(data) {
+  _trialKSkuData = data;
   var wrap = document.getElementById('tkeluar-sku-list');
   if (!data.length) {
-    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px;"><div style="font-size:36px;margin-bottom:12px;">📭</div>Bin kosong</div>';
+    wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">📭 Bin kosong</div>';
     return;
   }
 
-  wrap.innerHTML = '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Pilih barang yang ingin dikeluarkan:</div>'
-    + data.map(function(sku) {
-      var eff = (sku.pallet||0) + ((sku.pecahan||0) > 0 ? 1 : 0);
-      return '<div onclick="selectTrialKSku(\'' + sku.kode + '\',\'' + escHtml(sku.nama) + '\')"'
-        + ' style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all .15s;"'
-        + ' onmouseover="this.style.borderColor=\"#ef4444\"" onmouseout="this.style.borderColor=\"var(--border)\"">'
-        + '<div style="color:#2563eb;font-weight:700;font-size:13px;">' + sku.kode + '</div>'
-        + '<div style="color:var(--text);font-size:12px;">' + escHtml(sku.nama) + '</div>'
-        + '<div style="margin-top:4px;font-size:11px;color:#ef4444;font-weight:700;">' + eff + ' plt efektif tersedia</div>'
-        + '</div>';
-    }).join('');
+  // Deduplicate by kode
+  var seen = {}, deduped = [];
+  data.forEach(function(s) { if (!seen[s.kode]) { seen[s.kode] = true; deduped.push(s); } });
+
+  wrap.innerHTML = deduped.map(function(sku) {
+    var eff = (sku.pallet||0) + ((sku.pecahan||0) > 0 ? 1 : 0);
+    return '<div onclick="selectTrialKSku(\'' + sku.kode + '\',\'' + escHtml(sku.nama) + '\')"'
+      + ' style="padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;"'
+      + ' onmouseover="this.style.background=\"var(--surface2)\"" onmouseout="this.style.background=\"\"">'
+      + '<div style="color:#2563eb;font-weight:700;font-size:13px;">' + sku.kode + '</div>'
+      + '<div style="color:var(--text);font-size:12px;">' + escHtml(sku.nama) + '</div>'
+      + '<div style="margin-top:2px;font-size:11px;color:#ef4444;font-weight:700;">' + eff + ' plt efektif</div>'
+      + '</div>';
+  }).join('');
 }
+
+function toggleTrialKSkuDropdown() {
+  var dd = document.getElementById('tkeluar-sku-dropdown');
+  var ch = document.getElementById('tkeluar-sku-chevron');
+  var isOpen = dd.style.display !== 'none';
+  dd.style.display = isOpen ? 'none' : 'block';
+  ch.textContent = isOpen ? '▼' : '▲';
+}
+
 
 function selectTrialKSku(kode, nama) {
   _trialK.sku     = kode;
   _trialK.skuNama = nama;
+
+  // Update dropdown display
+  var dispKode = document.getElementById('tkeluar-sku-display-kode');
+  var dispNama = document.getElementById('tkeluar-sku-display-nama');
+  var sel      = document.getElementById('tkeluar-sku-selected');
+  if (dispKode) dispKode.textContent = kode;
+  if (dispNama) dispNama.textContent = nama;
+  if (sel)      sel.style.borderColor = '#2563eb';
+  // Close dropdown
+  var dd = document.getElementById('tkeluar-sku-dropdown');
+  var ch = document.getElementById('tkeluar-sku-chevron');
+  if (dd) dd.style.display = 'none';
+  if (ch) ch.textContent = '▼';
 
   document.getElementById('tkeluar-sku-kode').textContent = kode;
   document.getElementById('tkeluar-sku-nama').textContent = nama;
@@ -3032,10 +3075,10 @@ function selectTrialKProdate(prodate, maxPlt, maxPec, maxKtn, quotation) {
   _trialK.maxKarton  = maxKtn;
   _trialK.quotation  = quotation;
 
-  // Highlight selected chip
+  // Highlight selected chip using data attribute
   document.querySelectorAll('#tkeluar-prodate-chips .prodate-chip').forEach(function(c) {
-    c.classList.remove('selected');
-    if (c.querySelector('div').textContent === prodate) c.classList.add('selected');
+    var isSelected = c.dataset.prodate === prodate;
+    c.classList.toggle('selected', isSelected);
   });
 
   // Update max labels
