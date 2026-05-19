@@ -1175,10 +1175,23 @@ var binSkuData = [];  // SKU yg ada di bin ini (untuk KELUAR/PINDAH)
 // INIT
 // ═══════════════════════════════════════
 window.addEventListener('DOMContentLoaded', function() {
-  initListeners();
-  // Langsung ke screen tipe tanpa tunggu SKU
-  setTimeout(function() { showScreen('screen-tipe'); }, 400);
-  // Load SKU di background
+  // Pastikan splash selalu hilang apapun yang terjadi
+  function goToMain() {
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    var el = document.getElementById('screen-tipe');
+    if (el) el.classList.add('active');
+  }
+
+  // Paksa ke main setelah 2 detik jika ada error
+  var forceFallback = setTimeout(goToMain, 2000);
+
+  try { initListeners(); } catch(e) { console.warn('initListeners:', e); }
+
+  setTimeout(function() {
+    clearTimeout(forceFallback);
+    try { showScreen('screen-tipe'); } catch(e) { goToMain(); }
+  }, 400);
+
   gasCall('getBinSkuList', null,
     function(data) { skuData = data || []; },
     function()     { skuData = []; }
@@ -2574,7 +2587,7 @@ function scanLoop() {
 
   // Cek jsQR sudah loaded
   if (typeof jsQR === 'undefined') {
-    status.textContent = '⚠️ Library QR belum siap, coba refresh...';
+    status.textContent = '⏳ Memuat library QR...';
     setTimeout(scanLoop, 500);
     return;
   }
@@ -3019,6 +3032,6 @@ if ('serviceWorker' in navigator) {
 }
 
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 </body>
 </html>
