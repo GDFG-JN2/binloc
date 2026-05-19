@@ -2573,27 +2573,38 @@ function scanLoop() {
 
   if (!_scanStream) return;
 
+  // Cek jsQR sudah loaded
+  if (typeof jsQR === 'undefined') {
+    status.textContent = '⚠️ Library QR belum siap, coba refresh...';
+    setTimeout(scanLoop, 500);
+    return;
+  }
+
   _scanAnimFrame = requestAnimationFrame(function() {
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      canvas.width  = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.style.display = 'none';
-      var ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    try {
+      if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.style.display = 'none';
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      var code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'dontInvert'
-      });
+        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert'
+        });
 
-      if (code && code.data) {
-        status.textContent = '✅ QR terbaca: ' + code.data;
-        stopScanner();
-        setTimeout(function() { processScanResult(code.data); }, 300);
+        if (code && code.data) {
+          status.textContent = '✅ QR terbaca: ' + code.data;
+          stopScanner();
+          setTimeout(function() { processScanResult(code.data); }, 200);
+        } else {
+          scanLoop();
+        }
       } else {
         scanLoop();
       }
-    } else {
+    } catch(e) {
       scanLoop();
     }
   });
@@ -2611,19 +2622,22 @@ function stopScanner() {
 // PROCESS SCAN RESULT
 // ═══════════════════════════════════════
 function isBinLoc(code) {
-  return /^[A-Za-z]\d+$/.test(code.trim()) || /^[A-Za-z][A-Za-z\d\-\s]+$/i.test(code.trim());
+  // Format bin: huruf diikuti angka, misal A1, D12, F3
+  return /^[A-Za-z]\d{1,3}$/.test(code.trim());
 }
 function isSkuCode(code) {
+  // Format SKU: angka 5+ digit
   return /^\d{5,}$/.test(code.trim());
 }
 
 function processScanResult(raw) {
-  if (!raw) return;
+  if (!raw) { showToast('QR kosong'); return; }
   raw = raw.trim().toUpperCase();
   document.getElementById('scan-manual-input').value = '';
 
+  showToast('QR: ' + raw);
+
   if (_scanPurpose === 'bin-for-masuk') {
-    // Confirm bin for masuk
     document.getElementById('tmasuk-bin-input').value = raw;
     stopScanner();
     showScreen('screen-trial-masuk');
@@ -2637,13 +2651,15 @@ function processScanResult(raw) {
     return;
   }
 
-  // transaksi mode: detect type
+  // transaksi: deteksi SKU vs Bin
   if (isSkuCode(raw)) {
-    // SKU → MASUK
     stopScanner();
     openTrialMasuk(raw);
+  } else if (isBinLoc(raw)) {
+    stopScanner();
+    loadTrialKeluar(raw);
   } else {
-    // BIN LOC → KELUAR
+    // Coba sebagai bin loc juga kalau tidak cocok keduanya
     stopScanner();
     loadTrialKeluar(raw);
   }
@@ -2867,7 +2883,7 @@ function loadTrialOpname(bin) {
 }
 
 function renderTrialOpname(data) {
-  var list = document.getElementById('topname-list');
+  var list  = document.getElementById('topname-list');
   var empty = document.getElementById('topname-empty');
 
   if (!data.length) {
@@ -2877,29 +2893,49 @@ function renderTrialOpname(data) {
   }
   empty.style.display = 'none';
 
-  list.innerHTML = '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Masukkan jumlah aktual di lapangan, lalu tap Approve.</div>'
+  list.innerHTML = '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Masukkan jumlah aktual di lapangan, lalu tap Approve atau Selisih.</div>'
     + data.map(function(sku) {
       var rows = (sku.prodates || []).map(function(pd, idx) {
-        var sysEff = (pd.pallet||0) + (pd.pecahan > 0 ? 1 : 0);
-        return '<div id="opname-row-'+sku.kode+'-'+idx+'" style="background:var(--surface2);border-radius:8px;padding:10px;margin-top:8px;">'
-          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+        var sysPlt = pd.pallet  || 0;
+        var sysPec = pd.pecahan || 0;
+        var sysKtn = pd.karton  || 0;
+        var sysEff = sysPlt + (sysPec > 0 ? 1 : 0);
+        var std    = sysPlt > 0 ? Math.round((sysKtn - sysPec) / sysPlt) : 0;
+        var ktnStr = std > 0
+          ? sysPlt + 'p@' + std + (sysPec > 0 ? ' + ' + sysPec : '') + ' (' + sysKtn + ' ktn)'
+          : (sysKtn > 0 ? sysKtn + ' ktn' : sysPlt + ' plt');
+
+        return '<div id="opname-row-' + sku.kode + '-' + idx + '" style="background:var(--surface2);border-radius:8px;padding:10px;margin-top:8px;">'
+          // Header: prodate + sistem badge
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
           + '<span style="font-size:11px;color:var(--muted);">Prodate: <b style="color:var(--text)">' + (pd.prodate||'-') + '</b></span>'
-          + '<span style="font-size:11px;background:#2563eb15;color:#2563eb;border:1px solid #2563eb40;border-radius:4px;padding:1px 8px;">Sistem: ' + sysEff + ' plt</span>'
+          + '<span style="font-size:11px;background:#2563eb15;color:#2563eb;border:1px solid #2563eb40;border-radius:4px;padding:2px 8px;font-weight:700;">' + sysEff + ' plt efektif</span>'
           + '</div>'
-          + '<div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Aktual di Lapangan</div>'
+          // Detail sistem
+          + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px;">'
+          + '<div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Data Sistem</div>'
+          + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;">'
+          + '<div><div style="font-size:10px;color:var(--muted);">Pallet</div><div style="font-weight:700;color:var(--text);font-size:14px;">' + sysPlt + '</div></div>'
+          + '<div><div style="font-size:10px;color:var(--muted);">Pecahan</div><div style="font-weight:700;color:var(--text);font-size:14px;">' + sysPec + '<span style="font-size:9px;color:var(--muted);"> ktn</span></div></div>'
+          + '<div><div style="font-size:10px;color:var(--muted);">Total Ktn</div><div style="font-weight:700;color:#2563eb;font-size:14px;">' + sysKtn + '</div></div>'
+          + '</div>'
+          + (std > 0 ? '<div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:center;">' + ktnStr + '</div>' : '')
+          + '</div>'
+          // Input aktual
+          + '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;">Aktual di Lapangan</div>'
           + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
           + '<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Pallet</div>'
-          + '<input type="number" min="0" id="opname-plt-'+sku.kode+'-'+idx+'" placeholder="0"'
-          + ' style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;text-align:center;"></div>'
+          + '<input type="number" min="0" id="opname-plt-' + sku.kode + '-' + idx + '" placeholder="0"'
+          + ' style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:14px;text-align:center;font-weight:700;"></div>'
           + '<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Pecahan (ktn)</div>'
-          + '<input type="number" min="0" id="opname-pec-'+sku.kode+'-'+idx+'" placeholder="0"'
-          + ' style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;text-align:center;"></div>'
+          + '<input type="number" min="0" id="opname-pec-' + sku.kode + '-' + idx + '" placeholder="0"'
+          + ' style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:14px;text-align:center;font-weight:700;"></div>'
           + '</div>'
           + '<div style="display:flex;gap:8px;">'
-          + '<button onclick="approveOpname(\''+sku.kode+'\',\''+escHtml(sku.nama)+'\','+idx+',\''+escHtml(pd.prodate||'')+'\','+pd.pallet+','+pd.pecahan+')"'
-          + ' style="flex:1;padding:8px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">✅ Approve</button>'
-          + '<button onclick="approveOpname(\''+sku.kode+'\',\''+escHtml(sku.nama)+'\','+idx+',\''+escHtml(pd.prodate||'')+'\','+pd.pallet+','+pd.pecahan+',true)"'
-          + ' style="flex:1;padding:8px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">⚠️ Selisih</button>'
+          + '<button onclick="approveOpname('' + sku.kode + '','' + escHtml(sku.nama) + '',' + idx + ','' + escHtml(pd.prodate||'') + '',' + sysPlt + ',' + sysPec + ',' + sysKtn + ')"'
+          + ' style="flex:1;padding:9px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">✅ Sesuai</button>'
+          + '<button onclick="approveOpname('' + sku.kode + '','' + escHtml(sku.nama) + '',' + idx + ','' + escHtml(pd.prodate||'') + '',' + sysPlt + ',' + sysPec + ',' + sysKtn + ',true)"'
+          + ' style="flex:1;padding:9px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">⚠️ Selisih</button>'
           + '</div></div>';
       }).join('');
 
@@ -2910,32 +2946,39 @@ function renderTrialOpname(data) {
     }).join('');
 }
 
-function approveOpname(kode, nama, idx, prodate, sysPlt, sysPec, isSelisih) {
-  var aktualPlt = Number(document.getElementById('opname-plt-'+kode+'-'+idx).value);
-  var aktualPec = Number(document.getElementById('opname-pec-'+kode+'-'+idx).value);
+function approveOpname(kode, nama, idx, prodate, sysPlt, sysPec, sysKtn, isSelisih) {
+  var aktualPlt = Number(document.getElementById('opname-plt-' + kode + '-' + idx).value);
+  var aktualPec = Number(document.getElementById('opname-pec-' + kode + '-' + idx).value);
 
   if (isNaN(aktualPlt) || isNaN(aktualPec)) { showToast('❌ Isi jumlah aktual dulu'); return; }
 
   var sysEff    = sysPlt + (sysPec > 0 ? 1 : 0);
   var aktualEff = aktualPlt + (aktualPec > 0 ? 1 : 0);
   var selisih   = aktualEff - sysEff;
-  var status    = isSelisih ? 'SELISIH' : 'OK';
-  var ket       = 'OPNAME|' + status + '|sys:' + sysEff + 'plt|aktual:' + aktualEff + 'plt|selisih:' + selisih;
 
-  // Mark row as approved
-  var row = document.getElementById('opname-row-'+kode+'-'+idx);
+  var row = document.getElementById('opname-row-' + kode + '-' + idx);
   if (row) {
-    var color = isSelisih ? '#f59e0b' : '#16a34a';
+    var color  = isSelisih ? '#f59e0b' : '#16a34a';
+    var label  = isSelisih
+      ? '⚠️ SELISIH: ' + (selisih > 0 ? '+' : '') + selisih + ' plt (Sistem: ' + sysEff + ' | Aktual: ' + aktualEff + ')'
+      : '✅ SESUAI — ' + aktualEff + ' plt';
     row.style.borderLeft = '4px solid ' + color;
-    row.style.opacity    = '0.7';
-    row.innerHTML += '<div style="margin-top:8px;padding:6px 10px;background:'+color+'20;border-radius:6px;font-size:11px;font-weight:700;color:'+color+';">'
-      + (isSelisih ? '⚠️ SELISIH: ' + selisih + ' plt' : '✅ SESUAI') + '</div>';
-    // Disable buttons
-    row.querySelectorAll('button').forEach(function(b){ b.disabled = true; b.style.opacity = '0.5'; });
+    row.style.background = color + '08';
+    var existing = row.querySelector('.opname-result');
+    if (!existing) {
+      var div = document.createElement('div');
+      div.className = 'opname-result';
+      div.style.cssText = 'margin-top:8px;padding:8px 10px;background:' + color + '20;border-radius:6px;font-size:12px;font-weight:700;color:' + color + ';';
+      div.textContent = label;
+      row.appendChild(div);
+    }
+    row.querySelectorAll('button').forEach(function(b){ b.disabled = true; b.style.opacity = '0.4'; });
+    row.querySelectorAll('input').forEach(function(i){ i.disabled = true; });
   }
 
   showToast(isSelisih ? '⚠️ Selisih dicatat' : '✅ Approved');
 }
+
 
 // ═══════════════════════════════════════
 // UPDATE APP — clear cache & reload
