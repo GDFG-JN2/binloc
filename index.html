@@ -754,17 +754,24 @@ input:focus, select:focus {
   </div>
   <div class="screen-body" style="padding:16px;">
 
-    <!-- KELUAR / PINDAH toggle -->
+    <!-- KELUAR / PINDAH toggle — same style as main app -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
-      <div class="aksi-btn" id="tkeluar-aksi-KELUAR" onclick="setTrialKAksi('KELUAR')"
-        style="padding:12px;border:2px solid #ef4444;background:#ef444415;border-radius:10px;text-align:center;cursor:pointer;">
-        <div style="font-size:20px;">📤</div>
-        <div style="font-size:11px;font-weight:700;color:#ef4444;margin-top:4px;">KELUAR</div>
+      <div class="aksi-btn selected" id="tkeluar-aksi-KELUAR" onclick="setTrialKAksi('KELUAR')">
+        <div class="aksi-icon">📤</div>
+        <div class="aksi-label">KELUAR</div>
       </div>
-      <div class="aksi-btn" id="tkeluar-aksi-PINDAH" onclick="setTrialKAksi('PINDAH')"
-        style="padding:12px;border:2px solid var(--border);background:var(--surface);border-radius:10px;text-align:center;cursor:pointer;opacity:0.6;">
-        <div style="font-size:20px;">🔄</div>
-        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-top:4px;">PINDAH</div>
+      <div class="aksi-btn" id="tkeluar-aksi-PINDAH" onclick="setTrialKAksi('PINDAH')">
+        <div class="aksi-icon">🔄</div>
+        <div class="aksi-label">PINDAH</div>
+      </div>
+    </div>
+
+    <!-- TIPE LOKAL / EKSPOR -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Tipe</div>
+      <div class="tujuan-toggle">
+        <div class="tujuan-toggle-btn active" id="tkeluar-tipe-LOKAL" onclick="setTrialKTipe('LOKAL')">🏭 Lokal</div>
+        <div class="tujuan-toggle-btn" id="tkeluar-tipe-EKSPOR" onclick="setTrialKTipe('EKSPOR')">🚢 Ekspor</div>
       </div>
     </div>
 
@@ -801,10 +808,13 @@ input:focus, select:focus {
       </div>
 
       <!-- STD + stok info -->
-      <div id="tkeluar-std-info" style="display:none;background:var(--surface2);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--muted);">
+      <div id="tkeluar-std-info" style="display:none;background:var(--surface2);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:11px;color:var(--muted);">
         STD: <span id="tkeluar-std-val" style="font-weight:700;color:var(--text);">-</span> ktn/plt &nbsp;|&nbsp;
         Tersedia: <span id="tkeluar-stok-val" style="font-weight:700;color:#2563eb;">-</span>
       </div>
+
+      <!-- Quotation info (muncul jika ekspor) -->
+      <div id="tkeluar-qt-info" style="display:none;background:#7c3aed15;border:1px solid #7c3aed40;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;font-weight:700;color:#7c3aed;"></div>
 
       <!-- Bin Tujuan (hanya PINDAH) -->
       <div id="tkeluar-bin-tujuan-wrap" style="display:none;margin-bottom:12px;">
@@ -842,9 +852,12 @@ input:focus, select:focus {
 
       <!-- Operator -->
       <div style="margin-bottom:14px;">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Operator</div>
-        <input type="text" id="tkeluar-operator" placeholder="Nama operator..."
-          style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--mono);">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Operator</div>
+        <div class="operator-chips">
+          <div class="op-chip" onclick="pilihTrialKOp(this,'A')">A</div>
+          <div class="op-chip" onclick="pilihTrialKOp(this,'B')">B</div>
+          <div class="op-chip" onclick="pilihTrialKOp(this,'C')">C</div>
+        </div>
       </div>
 
       <!-- Submit -->
@@ -2901,7 +2914,7 @@ function submitTrialMasuk() {
 // TRIAL KELUAR / PINDAH
 // ═══════════════════════════════════════
 var _trialK = {
-  bin: null, aksi: 'KELUAR',
+  bin: null, aksi: 'KELUAR', tipe: 'LOKAL', operator: null,
   sku: null, skuNama: '', std: 0,
   prodate: null, maxPallet: 0, maxPecahan: 0, maxKarton: 0,
   quotation: ''
@@ -2909,38 +2922,40 @@ var _trialK = {
 
 function setTrialKAksi(aksi) {
   _trialK.aksi = aksi;
-  ['KELUAR','PINDAH'].forEach(function(a) {
-    var btn = document.getElementById('tkeluar-aksi-' + a);
-    var isActive = a === aksi;
-    if (a === 'KELUAR') {
-      btn.style.borderColor  = isActive ? '#ef4444' : 'var(--border)';
-      btn.style.background   = isActive ? '#ef444415' : 'var(--surface)';
-      btn.style.opacity      = isActive ? '1' : '0.6';
-      btn.querySelector('div:last-child').style.color = isActive ? '#ef4444' : 'var(--muted)';
-    } else {
-      btn.style.borderColor  = isActive ? '#f59e0b' : 'var(--border)';
-      btn.style.background   = isActive ? '#f59e0b15' : 'var(--surface)';
-      btn.style.opacity      = isActive ? '1' : '0.6';
-      btn.querySelector('div:last-child').style.color = isActive ? '#f59e0b' : 'var(--muted)';
-    }
+  document.querySelectorAll('#tkeluar-aksi-KELUAR, #tkeluar-aksi-PINDAH').forEach(function(b) {
+    b.classList.remove('selected');
   });
-  // Toggle bin tujuan
+  document.getElementById('tkeluar-aksi-' + aksi).classList.add('selected');
+
   var btWrap = document.getElementById('tkeluar-bin-tujuan-wrap');
   if (btWrap) btWrap.style.display = aksi === 'PINDAH' ? 'block' : 'none';
-  // Update submit button
+
   var submitBtn = document.getElementById('tkeluar-submit-btn');
   if (submitBtn) {
-    if (aksi === 'PINDAH') {
-      submitBtn.textContent = '🔄 Simpan Pindah';
-      submitBtn.style.background = '#f59e0b';
-    } else {
-      submitBtn.textContent = '📤 Simpan Keluar';
-      submitBtn.style.background = '#ef4444';
-    }
+    submitBtn.textContent = aksi === 'PINDAH' ? '🔄 Simpan Pindah' : '📤 Simpan Keluar';
+    submitBtn.style.background = aksi === 'PINDAH' ? '#f59e0b' : '#ef4444';
   }
-  // Update title
   var title = document.getElementById('tkeluar-title');
   if (title) title.textContent = aksi === 'PINDAH' ? 'Pindah Barang' : 'Keluar Barang';
+}
+
+function setTrialKTipe(tipe) {
+  _trialK.tipe = tipe;
+  ['LOKAL','EKSPOR'].forEach(function(t) {
+    var btn = document.getElementById('tkeluar-tipe-' + t);
+    if (!btn) return;
+    btn.classList.remove('active','ekspor-mode');
+    if (t === tipe) {
+      btn.classList.add('active');
+      if (tipe === 'EKSPOR') btn.classList.add('ekspor-mode');
+    }
+  });
+}
+
+function pilihTrialKOp(el, nama) {
+  _trialK.operator = nama;
+  document.querySelectorAll('#screen-trial-keluar .op-chip').forEach(function(c) { c.classList.remove('selected'); });
+  el.classList.add('selected');
 }
 
 function loadTrialKeluar(bin) {
@@ -2951,6 +2966,10 @@ function loadTrialKeluar(bin) {
     '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">⏳ Memuat...</div>';
   document.getElementById('tkeluar-form').style.display = 'none';
   setTrialKAksi('KELUAR');
+  setTrialKTipe('LOKAL');
+  // Reset op chips
+  document.querySelectorAll('#screen-trial-keluar .op-chip').forEach(function(c){ c.classList.remove('selected'); });
+  _trialK.operator = null;
   showScreen('screen-trial-keluar');
 
   gasCall('getSkuByBin', bin, function(data) {
@@ -3036,34 +3055,49 @@ function selectTrialKSku(kode, nama) {
     var sku = found[0];
     var prodates = sku.prodates || [];
 
-    var chipsHtml = prodates.map(function(pd, ci) {
-      var eff = (pd.pallet||0) + ((pd.pecahan||0) > 0 ? 1 : 0);
-      var std = _trialK.std || 0;
-      var ktnStr = std > 0 && pd.pallet > 0
-        ? pd.pallet + 'p@' + std + (pd.pecahan > 0 ? ' +' + pd.pecahan : '') + ' (' + (pd.karton||0) + ')'
-        : eff + ' plt';
-      var chip = document.createElement('div');
-      chip.className = 'prodate-chip';
-      chip.style.cursor = 'pointer';
-      chip.dataset.prodate   = pd.prodate || '-';
-      chip.dataset.maxPlt    = pd.pallet  || 0;
-      chip.dataset.maxPec    = pd.pecahan || 0;
-      chip.dataset.maxKtn    = pd.karton  || 0;
-      chip.dataset.quotation = pd.quotation || '';
-      chip.innerHTML = '<div style="font-weight:700;font-size:12px;">' + (pd.prodate||'-') + '</div>'
-                     + '<div class="chip-pallet">' + ktnStr + '</div>';
-      chip.addEventListener('click', function() {
-        selectTrialKProdate(this.dataset.prodate, +this.dataset.maxPlt, +this.dataset.maxPec, +this.dataset.maxKtn, this.dataset.quotation);
-      });
-      return chip.outerHTML;
-    }).join('');
+    // Build chips dan inject ke DOM dulu, baru attach event
+    var chipsWrap = document.getElementById('tkeluar-prodate-chips');
+    chipsWrap.innerHTML = '';
 
-        document.getElementById('tkeluar-prodate-chips').innerHTML = chipsHtml || '<div style="font-size:11px;color:var(--muted);">Tidak ada prodate</div>';
+    if (!prodates.length) {
+      chipsWrap.innerHTML = '<div style="font-size:11px;color:var(--muted);">Tidak ada prodate</div>';
+    } else {
+      prodates.forEach(function(pd) {
+        var eff    = (pd.pallet||0) + ((pd.pecahan||0) > 0 ? 1 : 0);
+        var std    = _trialK.std || 0;
+        var qt     = String(pd.quotation || '').trim();
+        var isEksp = qt && qt !== '0';
+        var ktnStr = std > 0 && pd.pallet > 0
+          ? (pd.pallet) + 'p@' + std + (pd.pecahan > 0 ? ' +' + pd.pecahan : '') + ' (' + (pd.karton||0) + ')'
+          : eff + ' plt';
+
+        var chip = document.createElement('div');
+        chip.className = 'prodate-chip';
+        chip.style.cursor = 'pointer';
+        chip.dataset.prodate   = pd.prodate   || '-';
+        chip.dataset.maxPlt    = pd.pallet    || 0;
+        chip.dataset.maxPec    = pd.pecahan   || 0;
+        chip.dataset.maxKtn    = pd.karton    || 0;
+        chip.dataset.quotation = qt;
+        chip.innerHTML = '<div style="font-weight:700;font-size:12px;">' + (pd.prodate||'-') + '</div>'
+          + '<div class="chip-pallet">' + ktnStr + '</div>'
+          + (isEksp ? '<div style="font-size:9px;color:#7c3aed;font-weight:700;margin-top:1px;">QT: ' + qt + '</div>' : '');
+
+        chip.addEventListener('click', function() {
+          selectTrialKProdate(
+            this.dataset.prodate, +this.dataset.maxPlt,
+            +this.dataset.maxPec,  +this.dataset.maxKtn,
+            this.dataset.quotation
+          );
+        });
+        chipsWrap.appendChild(chip);
+      });
+    }
 
     // Auto-select jika hanya 1 prodate
     if (prodates.length === 1) {
       var pd = prodates[0];
-      selectTrialKProdate(pd.prodate||'-', pd.pallet||0, pd.pecahan||0, pd.karton||0, pd.quotation||'');
+      selectTrialKProdate(pd.prodate||'-', pd.pallet||0, pd.pecahan||0, pd.karton||0, String(pd.quotation||''));
     }
   }, function(){});
 }
@@ -3073,13 +3107,22 @@ function selectTrialKProdate(prodate, maxPlt, maxPec, maxKtn, quotation) {
   _trialK.maxPallet  = maxPlt;
   _trialK.maxPecahan = maxPec;
   _trialK.maxKarton  = maxKtn;
-  _trialK.quotation  = quotation;
+  _trialK.quotation  = quotation || '';
 
-  // Highlight selected chip using data attribute
+  // Highlight selected chip — match by prodate + quotation (keduanya harus sama)
   document.querySelectorAll('#tkeluar-prodate-chips .prodate-chip').forEach(function(c) {
-    var isSelected = c.dataset.prodate === prodate;
-    c.classList.toggle('selected', isSelected);
+    var match = c.dataset.prodate === prodate && c.dataset.quotation === (quotation || '');
+    c.classList.toggle('selected', match);
   });
+
+  // Tampilkan / sembunyikan quotation info
+  var qt     = String(quotation || '').trim();
+  var isEksp = qt && qt !== '0';
+  var qtWrap = document.getElementById('tkeluar-qt-info');
+  if (qtWrap) {
+    qtWrap.style.display = isEksp ? 'block' : 'none';
+    qtWrap.textContent   = isEksp ? 'Quotation: ' + qt : '';
+  }
 
   // Update max labels
   document.getElementById('tkeluar-max-plt').textContent = '(max ' + maxPlt + ')';
@@ -3140,14 +3183,15 @@ function submitTrialKeluar() {
   var operator = document.getElementById('tkeluar-operator').value.trim();
   var binTujuan= (_trialK.aksi === 'PINDAH') ? document.getElementById('tkeluar-bin-tujuan').value.trim().toUpperCase() : '';
 
-  if (!_trialK.sku)     { showToast('❌ Pilih barang dulu'); return; }
-  if (!_trialK.prodate) { showToast('❌ Pilih prodate dulu'); return; }
-  if (plt + pec === 0)  { showToast('❌ Jumlah tidak boleh 0'); return; }
+  if (!_trialK.sku)      { showToast('❌ Pilih barang dulu'); return; }
+  if (!_trialK.prodate)  { showToast('❌ Pilih prodate dulu'); return; }
+  if (plt + pec === 0)   { showToast('❌ Jumlah tidak boleh 0'); return; }
+  if (!_trialK.operator) { showToast('❌ Pilih operator dulu'); return; }
   if (_trialK.aksi === 'PINDAH' && !binTujuan) { showToast('❌ Isi bin tujuan dulu'); return; }
 
   var payload = {
     aksi:       _trialK.aksi,
-    tipe:       'LOKAL',
+    tipe:       _trialK.tipe || 'LOKAL',
     binLoc:     _trialK.bin,
     binTujuan:  binTujuan,
     skuKode:    _trialK.sku,
@@ -3158,7 +3202,7 @@ function submitTrialKeluar() {
     std:        _trialK.std,
     prodate:    _trialK.prodate,
     quotation:  _trialK.quotation,
-    operator:   operator,
+    operator:   _trialK.operator,
     keterangan: 'TRIAL'
   };
 
