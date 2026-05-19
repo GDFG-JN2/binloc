@@ -766,13 +766,9 @@ input:focus, select:focus {
       </div>
     </div>
 
-    <!-- TIPE LOKAL / EKSPOR -->
-    <div style="margin-bottom:14px;">
-      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Tipe</div>
-      <div class="tujuan-toggle">
-        <div class="tujuan-toggle-btn active" id="tkeluar-tipe-LOKAL" onclick="setTrialKTipe('LOKAL')">🏭 Lokal</div>
-        <div class="tujuan-toggle-btn" id="tkeluar-tipe-EKSPOR" onclick="setTrialKTipe('EKSPOR')">🚢 Ekspor</div>
-      </div>
+    <!-- TIPE — auto dari data, ditampilkan saja -->
+    <div id="tkeluar-tipe-display" style="display:none;margin-bottom:14px;">
+      <span id="tkeluar-tipe-badge" style="padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;"></span>
     </div>
 
     <!-- SKU Dropdown -->
@@ -2939,19 +2935,6 @@ function setTrialKAksi(aksi) {
   if (title) title.textContent = aksi === 'PINDAH' ? 'Pindah Barang' : 'Keluar Barang';
 }
 
-function setTrialKTipe(tipe) {
-  _trialK.tipe = tipe;
-  ['LOKAL','EKSPOR'].forEach(function(t) {
-    var btn = document.getElementById('tkeluar-tipe-' + t);
-    if (!btn) return;
-    btn.classList.remove('active','ekspor-mode');
-    if (t === tipe) {
-      btn.classList.add('active');
-      if (tipe === 'EKSPOR') btn.classList.add('ekspor-mode');
-    }
-  });
-}
-
 function pilihTrialKOp(el, nama) {
   _trialK.operator = nama;
   document.querySelectorAll('#screen-trial-keluar .op-chip').forEach(function(c) { c.classList.remove('selected'); });
@@ -2995,16 +2978,23 @@ function renderTrialKeluar(data) {
   data.forEach(function(s) { if (!seen[s.kode]) { seen[s.kode] = true; deduped.push(s); } });
 
   wrap.innerHTML = deduped.map(function(sku) {
-    var eff = (sku.pallet||0) + ((sku.pecahan||0) > 0 ? 1 : 0);
-    return '<div onclick="selectTrialKSku(\'' + sku.kode + '\',\'' + escHtml(sku.nama) + '\')"'
+    var eff    = (sku.pallet||0) + ((sku.pecahan||0) > 0 ? 1 : 0);
+    var tipe   = String(sku.tipe || 'LOKAL').toUpperCase();
+    var isEksp = tipe === 'EKSPOR';
+    var tc     = isEksp ? '#7c3aed' : '#16a34a';
+    return '<div onclick="selectTrialKSku(\'' + sku.kode + '\',\'' + escHtml(sku.nama) + '\',\'' + tipe + '\')"'
       + ' style="padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;"'
       + ' onmouseover="this.style.background=\"var(--surface2)\"" onmouseout="this.style.background=\"\"">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;">'
       + '<div style="color:#2563eb;font-weight:700;font-size:13px;">' + sku.kode + '</div>'
+      + '<span style="font-size:10px;font-weight:700;color:' + tc + ';background:' + tc + '15;border:1px solid ' + tc + '40;border-radius:10px;padding:1px 8px;">' + tipe + '</span>'
+      + '</div>'
       + '<div style="color:var(--text);font-size:12px;">' + escHtml(sku.nama) + '</div>'
       + '<div style="margin-top:2px;font-size:11px;color:#ef4444;font-weight:700;">' + eff + ' plt efektif</div>'
       + '</div>';
   }).join('');
 }
+
 
 function toggleTrialKSkuDropdown() {
   var dd = document.getElementById('tkeluar-sku-dropdown');
@@ -3015,9 +3005,21 @@ function toggleTrialKSkuDropdown() {
 }
 
 
-function selectTrialKSku(kode, nama) {
+function selectTrialKSku(kode, nama, tipe) {
   _trialK.sku     = kode;
   _trialK.skuNama = nama;
+  _trialK.tipe    = tipe || 'LOKAL';
+
+  // Show tipe badge
+  var tipeDisp = document.getElementById('tkeluar-tipe-display');
+  var tipeBadge = document.getElementById('tkeluar-tipe-badge');
+  if (tipeDisp && tipeBadge) {
+    var isEksp = _trialK.tipe === 'EKSPOR';
+    var tc = isEksp ? '#7c3aed' : '#16a34a';
+    tipeBadge.textContent = isEksp ? '🚢 EKSPOR' : '🏭 LOKAL';
+    tipeBadge.style.cssText = 'color:' + tc + ';background:' + tc + '15;border:1px solid ' + tc + '40;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;';
+    tipeDisp.style.display = 'block';
+  }
 
   // Update dropdown display
   var dispKode = document.getElementById('tkeluar-sku-display-kode');
