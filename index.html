@@ -552,10 +552,209 @@ input:focus, select:focus {
 
   </div>
 
+    <div class="tipe-card" style="border-color:#f43f5e40;background:#f43f5e08;" onclick="showScreen('screen-trial-pw')">
+      <div class="card-icon">🧪</div>
+      <div class="card-label" style="color:#f43f5e">Trial</div>
+      <div class="card-desc">Scan barcode — Transaksi & Opname</div>
+    </div>
+  </div>
+
   <!-- Update App button -->
   <button onclick="updateApp()" id="btn-update-app" style="margin-top:20px;padding:8px 20px;background:none;border:1px solid var(--border);border-radius:20px;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--mono);display:flex;align-items:center;gap:6px;">
     🔄 <span id="update-app-label">Update App</span>
   </button>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN: TRIAL PASSWORD
+═══════════════════════════════ -->
+<div class="screen" id="screen-trial-pw">
+  <div class="app-header">
+    <div class="back-btn" onclick="goHome()">←</div>
+    <div class="title-group"><h2>Trial</h2><div class="sub">Masukkan password</div></div>
+  </div>
+  <div class="screen-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:20px;padding:40px 24px;">
+    <div style="font-size:48px">🔐</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text)">Password Diperlukan</div>
+    <div style="width:100%;max-width:300px;">
+      <input id="trial-pw-input" type="password" placeholder="Masukkan password..."
+        style="width:100%;padding:14px;border:2px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-family:var(--mono);text-align:center;"
+        onkeydown="if(event.key==='Enter') checkTrialPw()">
+      <div id="trial-pw-error" style="color:#ef4444;font-size:12px;text-align:center;margin-top:8px;display:none;">Password salah</div>
+    </div>
+    <button onclick="checkTrialPw()" style="padding:12px 40px;background:#f43f5e;color:#fff;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;">Masuk</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN: TRIAL HOME
+═══════════════════════════════ -->
+<div class="screen" id="screen-trial-home">
+  <div class="app-header">
+    <div class="back-btn" onclick="goHome()">←</div>
+    <div class="title-group"><h2>Trial 🧪</h2><div class="sub">Pilih mode</div></div>
+  </div>
+  <div class="screen-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;padding:24px;">
+    <div class="tipe-card" style="width:100%;max-width:360px;border-color:#2563eb40;background:#2563eb08;" onclick="startTrialScan('transaksi')">
+      <div class="card-icon">📦</div>
+      <div class="card-label" style="color:#2563eb">Transaksi</div>
+      <div class="card-desc">Scan SKU → Masuk &nbsp;|&nbsp; Scan Bin → Keluar</div>
+    </div>
+    <div class="tipe-card" style="width:100%;max-width:360px;border-color:#16a34a40;background:#16a34a08;" onclick="startTrialScan('opname')">
+      <div class="card-icon">📋</div>
+      <div class="card-label" style="color:#16a34a">Opname</div>
+      <div class="card-desc">Scan Bin → Verifikasi stok lapangan vs sistem</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN: TRIAL SCANNER
+═══════════════════════════════ -->
+<div class="screen" id="screen-trial-scan">
+  <div class="app-header">
+    <div class="back-btn" onclick="stopScanner();showScreen('screen-trial-home')">←</div>
+    <div class="title-group">
+      <h2 id="scan-title">Scanner</h2>
+      <div class="sub" id="scan-sub">Arahkan kamera ke barcode</div>
+    </div>
+  </div>
+  <div class="screen-body" style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+    <!-- Camera viewfinder -->
+    <div style="position:relative;border-radius:14px;overflow:hidden;background:#1e2533;aspect-ratio:4/3;">
+      <video id="scan-video" style="width:100%;height:100%;object-fit:cover;" playsinline autoplay muted></video>
+      <canvas id="scan-canvas" style="display:none;"></canvas>
+      <!-- Scan frame overlay -->
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+        <div style="width:70%;height:40%;border:2px solid rgba(37,99,235,0.8);border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,0.35);">
+          <div style="position:absolute;top:0;left:0;width:20px;height:20px;border-top:3px solid #2563eb;border-left:3px solid #2563eb;border-radius:2px 0 0 0;"></div>
+          <div style="position:absolute;top:0;right:0;width:20px;height:20px;border-top:3px solid #2563eb;border-right:3px solid #2563eb;border-radius:0 2px 0 0;"></div>
+          <div style="position:absolute;bottom:0;left:0;width:20px;height:20px;border-bottom:3px solid #2563eb;border-left:3px solid #2563eb;border-radius:0 0 0 2px;"></div>
+          <div style="position:absolute;bottom:0;right:0;width:20px;height:20px;border-bottom:3px solid #2563eb;border-right:3px solid #2563eb;border-radius:0 0 2px 0;"></div>
+        </div>
+      </div>
+      <div id="scan-status" style="position:absolute;bottom:12px;left:0;right:0;text-align:center;color:#fff;font-size:11px;background:rgba(0,0,0,.5);padding:4px;"></div>
+    </div>
+    <!-- Manual input fallback -->
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input id="scan-manual-input" placeholder="Atau ketik kode manual..."
+        style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--mono);"
+        onkeydown="if(event.key==='Enter') processScanResult(this.value.trim())">
+      <button onclick="processScanResult(document.getElementById('scan-manual-input').value.trim())"
+        style="padding:10px 14px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN: TRIAL MASUK (setelah scan SKU)
+═══════════════════════════════ -->
+<div class="screen" id="screen-trial-masuk">
+  <div class="app-header">
+    <div class="back-btn" onclick="startTrialScan('transaksi')">←</div>
+    <div class="title-group"><h2>Transaksi Masuk</h2><div class="sub" id="tmasuk-sub">Scan Bin Loc tujuan</div></div>
+  </div>
+  <div class="screen-body" style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+    <!-- SKU info card -->
+    <div id="tmasuk-sku-card" style="background:var(--surface);border:1px solid #2563eb40;border-radius:12px;padding:14px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Barang Terdeteksi</div>
+      <div id="tmasuk-sku-kode" style="color:#2563eb;font-weight:700;font-size:14px;"></div>
+      <div id="tmasuk-sku-nama" style="color:var(--text);font-size:13px;margin-top:2px;"></div>
+    </div>
+    <!-- Scan bin loc -->
+    <div id="tmasuk-scan-bin-wrap">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Bin Loc Tujuan</div>
+      <div style="display:flex;gap:8px;">
+        <input id="tmasuk-bin-input" placeholder="Scan atau ketik bin loc..."
+          style="flex:1;padding:10px 12px;border:2px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--mono);text-transform:uppercase;"
+          oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter') confirmTrialBin()">
+        <button onclick="startScanBinForMasuk()"
+          style="padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-size:18px;cursor:pointer;">📷</button>
+      </div>
+    </div>
+    <!-- Detail form (muncul setelah bin terisi) -->
+    <div id="tmasuk-form" style="display:none;">
+      <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--muted);">
+        STD: <span id="tmasuk-std" style="font-weight:700;color:var(--text)">-</span> ktn/plt &nbsp;|&nbsp;
+        Tersedia: <span id="tmasuk-tersedia" style="font-weight:700;color:#2563eb">-</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Pallet Full</div>
+          <input type="number" id="tmasuk-pallet" min="0" value="0"
+            style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px;text-align:center;"
+            oninput="calcTrialTotal()">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Pecahan (ktn)</div>
+          <input type="number" id="tmasuk-pecahan" min="0" value="0"
+            style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px;text-align:center;"
+            oninput="calcTrialTotal()">
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;margin-bottom:10px;">
+        <span style="font-size:11px;color:var(--muted);">Total Karton: </span>
+        <span id="tmasuk-total" style="font-size:16px;font-weight:800;color:#2563eb;">0</span>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Prodate</div>
+        <input type="date" id="tmasuk-prodate"
+          style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;">
+      </div>
+      <div id="tmasuk-quotation-wrap" style="display:none;margin-bottom:10px;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Quotation No.</div>
+        <input type="text" id="tmasuk-quotation" placeholder="QT-XXXXX"
+          style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--mono);">
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Operator</div>
+        <input type="text" id="tmasuk-operator"
+          style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--mono);"
+          placeholder="Nama operator...">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="startTrialScan('transaksi')" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-weight:700;color:var(--muted);cursor:pointer;">Batal</button>
+        <button onclick="submitTrialMasuk()" style="flex:2;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;">✅ Simpan Masuk</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN: TRIAL KELUAR (setelah scan BIN)
+═══════════════════════════════ -->
+<div class="screen" id="screen-trial-keluar">
+  <div class="app-header">
+    <div class="back-btn" onclick="startTrialScan('transaksi')">←</div>
+    <div class="title-group">
+      <h2>Transaksi Keluar</h2>
+      <div class="sub">Bin: <span id="tkeluar-bin-label" style="color:#ef4444;font-weight:700;"></span></div>
+    </div>
+  </div>
+  <div class="screen-body" style="padding:16px;">
+    <div id="tkeluar-list"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN: TRIAL OPNAME
+═══════════════════════════════ -->
+<div class="screen" id="screen-trial-opname">
+  <div class="app-header">
+    <div class="back-btn" onclick="startTrialScan('opname')">←</div>
+    <div class="title-group">
+      <h2>Opname</h2>
+      <div class="sub">Bin: <span id="topname-bin-label" style="color:#16a34a;font-weight:700;"></span></div>
+    </div>
+  </div>
+  <div class="screen-body" style="padding:16px;">
+    <div id="topname-list"></div>
+    <div id="topname-empty" style="display:none;text-align:center;padding:40px;color:var(--muted);font-size:13px;">
+      <div style="font-size:36px;margin-bottom:12px;">📭</div>
+      Tidak ada barang di bin ini
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════
@@ -2289,6 +2488,460 @@ function renderRiwayat(data) {
       + (r.keterangan ? '<div style="font-size:10px;color:var(--muted);margin-top:4px;font-style:italic;">'+r.keterangan+'</div>' : '')
       + '</div>';
   }).join('');
+}
+
+// ═══════════════════════════════════════
+// TRIAL — Password & Navigation
+// ═══════════════════════════════════════
+var _trialMode       = null; // 'transaksi' | 'opname'
+var _trialScannedSku = null; // { kode, nama, std }
+var _trialScannedBin = null; // bin loc string
+var _scanStream      = null; // MediaStream
+var _scanAnimFrame   = null; // requestAnimationFrame id
+var _scanDetector    = null; // BarcodeDetector instance
+var _scanPurpose     = null; // 'transaksi' | 'opname' | 'bin-for-masuk'
+
+function checkTrialPw() {
+  var pw = document.getElementById('trial-pw-input').value;
+  var err = document.getElementById('trial-pw-error');
+  if (pw === 'kemalganteng') {
+    err.style.display = 'none';
+    document.getElementById('trial-pw-input').value = '';
+    showScreen('screen-trial-home');
+  } else {
+    err.style.display = 'block';
+    document.getElementById('trial-pw-input').value = '';
+  }
+}
+
+function startTrialScan(mode) {
+  _trialMode    = mode;
+  _scanPurpose  = mode;
+  _trialScannedSku = null;
+  _trialScannedBin = null;
+
+  var title = document.getElementById('scan-title');
+  var sub   = document.getElementById('scan-sub');
+  if (mode === 'transaksi') {
+    title.textContent = 'Scan Barcode';
+    sub.textContent   = 'Scan SKU → Masuk  |  Scan Bin Loc → Keluar';
+  } else {
+    title.textContent = 'Scan Bin Loc';
+    sub.textContent   = 'Arahkan ke barcode bin untuk opname';
+  }
+  showScreen('screen-trial-scan');
+  startCamera();
+}
+
+function startScanBinForMasuk() {
+  _scanPurpose = 'bin-for-masuk';
+  var title = document.getElementById('scan-title');
+  var sub   = document.getElementById('scan-sub');
+  title.textContent = 'Scan Bin Loc';
+  sub.textContent   = 'Arahkan ke barcode bin tujuan';
+  showScreen('screen-trial-scan');
+  startCamera();
+}
+
+// ═══════════════════════════════════════
+// BARCODE SCANNER
+// ═══════════════════════════════════════
+function startCamera() {
+  stopScanner();
+  var video  = document.getElementById('scan-video');
+  var status = document.getElementById('scan-status');
+  status.textContent = 'Memulai kamera...';
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+  }).then(function(stream) {
+    _scanStream = stream;
+    video.srcObject = stream;
+    video.play();
+    status.textContent = 'Arahkan ke barcode...';
+
+    // Init BarcodeDetector
+    if ('BarcodeDetector' in window) {
+      BarcodeDetector.getSupportedFormats().then(function(formats) {
+        _scanDetector = new BarcodeDetector({ formats: formats });
+        scanLoop();
+      });
+    } else {
+      status.textContent = '⚠️ BarcodeDetector tidak didukung — gunakan input manual';
+    }
+  }).catch(function(err) {
+    status.textContent = '❌ Kamera tidak bisa diakses — gunakan input manual';
+  });
+}
+
+function scanLoop() {
+  var video  = document.getElementById('scan-video');
+  var canvas = document.getElementById('scan-canvas');
+  var status = document.getElementById('scan-status');
+
+  if (!_scanDetector || !_scanStream) return;
+
+  _scanAnimFrame = requestAnimationFrame(function() {
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      _scanDetector.detect(canvas).then(function(barcodes) {
+        if (barcodes.length > 0) {
+          var raw = barcodes[0].rawValue;
+          status.textContent = '✅ Terdeteksi: ' + raw;
+          stopScanner();
+          setTimeout(function() { processScanResult(raw); }, 300);
+        } else {
+          scanLoop();
+        }
+      }).catch(function() {
+        scanLoop();
+      });
+    } else {
+      scanLoop();
+    }
+  });
+}
+
+function stopScanner() {
+  if (_scanAnimFrame) { cancelAnimationFrame(_scanAnimFrame); _scanAnimFrame = null; }
+  if (_scanStream)    { _scanStream.getTracks().forEach(function(t){ t.stop(); }); _scanStream = null; }
+  _scanDetector = null;
+  var video = document.getElementById('scan-video');
+  if (video) video.srcObject = null;
+}
+
+// ═══════════════════════════════════════
+// PROCESS SCAN RESULT
+// ═══════════════════════════════════════
+function isBinLoc(code) {
+  return /^[A-Za-z]\d+$/.test(code.trim()) || /^[A-Za-z][A-Za-z\d\-\s]+$/i.test(code.trim());
+}
+function isSkuCode(code) {
+  return /^\d{5,}$/.test(code.trim());
+}
+
+function processScanResult(raw) {
+  if (!raw) return;
+  raw = raw.trim().toUpperCase();
+  document.getElementById('scan-manual-input').value = '';
+
+  if (_scanPurpose === 'bin-for-masuk') {
+    // Confirm bin for masuk
+    document.getElementById('tmasuk-bin-input').value = raw;
+    stopScanner();
+    showScreen('screen-trial-masuk');
+    confirmTrialBin();
+    return;
+  }
+
+  if (_scanPurpose === 'opname') {
+    stopScanner();
+    loadTrialOpname(raw);
+    return;
+  }
+
+  // transaksi mode: detect type
+  if (isSkuCode(raw)) {
+    // SKU → MASUK
+    stopScanner();
+    openTrialMasuk(raw);
+  } else {
+    // BIN LOC → KELUAR
+    stopScanner();
+    loadTrialKeluar(raw);
+  }
+}
+
+// ═══════════════════════════════════════
+// TRIAL MASUK
+// ═══════════════════════════════════════
+function openTrialMasuk(skuKode) {
+  document.getElementById('tmasuk-sku-kode').textContent = skuKode;
+  document.getElementById('tmasuk-sku-nama').textContent = 'Memuat...';
+  document.getElementById('tmasuk-form').style.display   = 'none';
+  document.getElementById('tmasuk-bin-input').value      = '';
+  document.getElementById('tmasuk-std').textContent      = '-';
+  document.getElementById('tmasuk-tersedia').textContent = '-';
+  document.getElementById('tmasuk-pallet').value  = '0';
+  document.getElementById('tmasuk-pecahan').value = '0';
+  document.getElementById('tmasuk-total').textContent = '0';
+
+  _trialScannedSku = { kode: skuKode, nama: '', std: 0 };
+
+  // Set today as default prodate
+  var today = new Date();
+  document.getElementById('tmasuk-prodate').value =
+    today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+
+  // Lookup SKU nama + STD
+  gasCall('getStdBySku', skuKode, function(std) {
+    _trialScannedSku.std = Number(std) || 0;
+    document.getElementById('tmasuk-std').textContent = _trialScannedSku.std || '-';
+  }, function(){});
+
+  // Lookup nama dari skuData
+  var found = (skuData || []).filter(function(s){ return s.kode === skuKode; });
+  if (found.length) {
+    _trialScannedSku.nama = found[0].nama;
+    document.getElementById('tmasuk-sku-nama').textContent = found[0].nama;
+  } else {
+    document.getElementById('tmasuk-sku-nama').textContent = '(nama tidak ditemukan)';
+  }
+
+  showScreen('screen-trial-masuk');
+}
+
+function confirmTrialBin() {
+  var bin = document.getElementById('tmasuk-bin-input').value.trim().toUpperCase();
+  if (!bin) return;
+  document.getElementById('tmasuk-form').style.display = 'block';
+  document.getElementById('tmasuk-sub').textContent    = 'Bin: ' + bin;
+
+  // Cek tersedia di bin
+  gasCall('getSkuByBin', bin, function(data) {
+    var total = 0;
+    (data || []).forEach(function(s) { total += (s.pallet || 0); });
+    document.getElementById('tmasuk-tersedia').textContent = total + ' plt';
+  }, function(){});
+
+  calcTrialTotal();
+}
+
+function calcTrialTotal() {
+  var plt = Number(document.getElementById('tmasuk-pallet').value)  || 0;
+  var pec = Number(document.getElementById('tmasuk-pecahan').value) || 0;
+  var std = _trialScannedSku ? _trialScannedSku.std : 0;
+  var total = (plt * std) + pec;
+  document.getElementById('tmasuk-total').textContent = total;
+}
+
+function submitTrialMasuk() {
+  var bin      = document.getElementById('tmasuk-bin-input').value.trim().toUpperCase();
+  var plt      = Number(document.getElementById('tmasuk-pallet').value)  || 0;
+  var pec      = Number(document.getElementById('tmasuk-pecahan').value) || 0;
+  var std      = _trialScannedSku ? _trialScannedSku.std : 0;
+  var total    = (plt * std) + pec;
+  var prodate  = document.getElementById('tmasuk-prodate').value;
+  var quotation= document.getElementById('tmasuk-quotation') ? document.getElementById('tmasuk-quotation').value : '';
+  var operator = document.getElementById('tmasuk-operator').value.trim();
+
+  if (!bin)      { showToast('❌ Bin Loc belum diisi'); return; }
+  if (plt + pec === 0) { showToast('❌ Jumlah pallet/pecahan 0'); return; }
+  if (!prodate)  { showToast('❌ Prodate belum diisi'); return; }
+
+  var payload = {
+    aksi: 'MASUK', tipe: 'LOKAL',
+    binLoc: bin, binTujuan: '',
+    skuKode: _trialScannedSku.kode, skuNama: _trialScannedSku.nama,
+    pallet: plt, pecahan: pec, totalKarton: total, std: std,
+    prodate: prodate, quotation: quotation, operator: operator, keterangan: 'TRIAL'
+  };
+
+  showLoading(true);
+  gasCall('saveBinMovement', payload, function(res) {
+    showLoading(false);
+    if (res && res.ok) {
+      showToast('✅ Masuk berhasil disimpan!');
+      setTimeout(function(){ startTrialScan('transaksi'); }, 1000);
+    } else {
+      showToast('❌ Gagal: ' + (res ? res.msg : 'Error'));
+    }
+  }, function(err) {
+    showLoading(false);
+    showToast('❌ Error: ' + ((err&&err.message)||'Gagal'));
+  });
+}
+
+// ═══════════════════════════════════════
+// TRIAL KELUAR
+// ═══════════════════════════════════════
+function loadTrialKeluar(bin) {
+  _trialScannedBin = bin;
+  document.getElementById('tkeluar-bin-label').textContent = bin;
+  document.getElementById('tkeluar-list').innerHTML =
+    '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">⏳ Memuat...</div>';
+  showScreen('screen-trial-keluar');
+
+  gasCall('getSkuByBin', bin, function(data) {
+    renderTrialKeluar(data || []);
+  }, function() {
+    document.getElementById('tkeluar-list').innerHTML =
+      '<div style="color:#ef4444;padding:20px;font-size:13px;">❌ Gagal memuat data</div>';
+  });
+}
+
+function renderTrialKeluar(data) {
+  var wrap = document.getElementById('tkeluar-list');
+  if (!data.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px;"><div style="font-size:36px;margin-bottom:12px;">📭</div>Bin kosong</div>';
+    return;
+  }
+
+  wrap.innerHTML = data.map(function(sku) {
+    var rows = (sku.prodates || []).map(function(pd, idx) {
+      return '<div style="background:var(--surface2);border-radius:8px;padding:10px;margin-top:8px;" id="keluar-row-'+sku.kode+'-'+idx+'">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+        + '<span style="font-size:11px;color:var(--muted);">' + (pd.prodate||'-') + '</span>'
+        + '<span style="font-size:11px;font-weight:700;color:#2563eb;">'
+        + (pd.pallet||0) + 'p' + (pd.pecahan>0?' + '+pd.pecahan+' ktn':'') + '</span>'
+        + '</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+        + '<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Plt Keluar</div>'
+        + '<input type="number" min="0" max="'+pd.pallet+'" value="0" id="keluar-plt-'+sku.kode+'-'+idx+'"'
+        + ' style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;text-align:center;"'
+        + ' oninput="calcKeluarTotal(\''+sku.kode+'\','+idx+','+pd.pallet+','+pd.pecahan+','+(sku.pallet>0?Math.round((pd.karton||0)/(pd.pallet||1)):0)+')">'
+        + '</div>'
+        + '<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Pecahan Keluar</div>'
+        + '<input type="number" min="0" value="0" id="keluar-pec-'+sku.kode+'-'+idx+'"'
+        + ' style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;text-align:center;"'
+        + ' oninput="calcKeluarTotal(\''+sku.kode+'\','+idx+','+pd.pallet+','+pd.pecahan+','+(sku.pallet>0?Math.round((pd.karton||0)/(pd.pallet||1)):0)+')">'
+        + '</div></div>'
+        + '<div style="margin-top:6px;font-size:11px;color:var(--muted);">Total: <span id="keluar-total-'+sku.kode+'-'+idx+'" style="font-weight:700;color:#2563eb;">0</span> ktn</div>'
+        + '<div style="margin-top:4px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Operator</div>'
+        + '<input type="text" id="keluar-op-'+sku.kode+'-'+idx+'" placeholder="Nama operator..."'
+        + ' style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;font-family:var(--mono);"></div>'
+        + '<button onclick="submitTrialKeluar(\''+sku.kode+'\',\''+escHtml(sku.nama)+'\','+idx+',\''+escHtml(pd.prodate||'')+'\','+pd.pecahan+')"'
+        + ' style="width:100%;margin-top:8px;padding:8px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Keluar</button>'
+        + '</div>';
+    }).join('');
+
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;">'
+      + '<div style="color:#2563eb;font-weight:700;font-size:13px;">' + sku.kode + '</div>'
+      + '<div style="color:var(--text);font-size:12px;margin-bottom:4px;">' + escHtml(sku.nama) + '</div>'
+      + rows + '</div>';
+  }).join('');
+}
+
+function calcKeluarTotal(kode, idx, maxPlt, maxPec, std) {
+  var plt = Number(document.getElementById('keluar-plt-'+kode+'-'+idx).value) || 0;
+  var pec = Number(document.getElementById('keluar-pec-'+kode+'-'+idx).value) || 0;
+  var total = (plt * std) + pec;
+  document.getElementById('keluar-total-'+kode+'-'+idx).textContent = total;
+}
+
+function submitTrialKeluar(kode, nama, idx, prodate, maxPec) {
+  var plt   = Number(document.getElementById('keluar-plt-'+kode+'-'+idx).value)  || 0;
+  var pec   = Number(document.getElementById('keluar-pec-'+kode+'-'+idx).value)  || 0;
+  var op    = document.getElementById('keluar-op-'+kode+'-'+idx).value.trim();
+  var total = Number(document.getElementById('keluar-total-'+kode+'-'+idx).textContent) || 0;
+
+  if (plt + pec === 0) { showToast('❌ Jumlah 0'); return; }
+
+  var payload = {
+    aksi: 'KELUAR', tipe: 'LOKAL',
+    binLoc: _trialScannedBin, binTujuan: '',
+    skuKode: kode, skuNama: nama,
+    pallet: plt, pecahan: pec, totalKarton: total, std: 0,
+    prodate: prodate, quotation: '', operator: op, keterangan: 'TRIAL'
+  };
+
+  showLoading(true);
+  gasCall('saveBinMovement', payload, function(res) {
+    showLoading(false);
+    if (res && res.ok) {
+      showToast('✅ Keluar berhasil disimpan!');
+      setTimeout(function(){ loadTrialKeluar(_trialScannedBin); }, 800);
+    } else {
+      showToast('❌ Gagal: ' + (res ? res.msg : 'Error'));
+    }
+  }, function(err) {
+    showLoading(false);
+    showToast('❌ Error: ' + ((err&&err.message)||'Gagal'));
+  });
+}
+
+// ═══════════════════════════════════════
+// TRIAL OPNAME
+// ═══════════════════════════════════════
+function loadTrialOpname(bin) {
+  _trialScannedBin = bin;
+  document.getElementById('topname-bin-label').textContent = bin;
+  document.getElementById('topname-list').innerHTML =
+    '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">⏳ Memuat...</div>';
+  document.getElementById('topname-empty').style.display = 'none';
+  showScreen('screen-trial-opname');
+
+  gasCall('getSkuByBin', bin, function(data) {
+    renderTrialOpname(data || []);
+  }, function() {
+    document.getElementById('topname-list').innerHTML =
+      '<div style="color:#ef4444;padding:20px;font-size:13px;">❌ Gagal memuat data</div>';
+  });
+}
+
+function renderTrialOpname(data) {
+  var list = document.getElementById('topname-list');
+  var empty = document.getElementById('topname-empty');
+
+  if (!data.length) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Masukkan jumlah aktual di lapangan, lalu tap Approve.</div>'
+    + data.map(function(sku) {
+      var rows = (sku.prodates || []).map(function(pd, idx) {
+        var sysEff = (pd.pallet||0) + (pd.pecahan > 0 ? 1 : 0);
+        return '<div id="opname-row-'+sku.kode+'-'+idx+'" style="background:var(--surface2);border-radius:8px;padding:10px;margin-top:8px;">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+          + '<span style="font-size:11px;color:var(--muted);">Prodate: <b style="color:var(--text)">' + (pd.prodate||'-') + '</b></span>'
+          + '<span style="font-size:11px;background:#2563eb15;color:#2563eb;border:1px solid #2563eb40;border-radius:4px;padding:1px 8px;">Sistem: ' + sysEff + ' plt</span>'
+          + '</div>'
+          + '<div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Aktual di Lapangan</div>'
+          + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
+          + '<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Pallet</div>'
+          + '<input type="number" min="0" id="opname-plt-'+sku.kode+'-'+idx+'" placeholder="0"'
+          + ' style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;text-align:center;"></div>'
+          + '<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Pecahan (ktn)</div>'
+          + '<input type="number" min="0" id="opname-pec-'+sku.kode+'-'+idx+'" placeholder="0"'
+          + ' style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;text-align:center;"></div>'
+          + '</div>'
+          + '<div style="display:flex;gap:8px;">'
+          + '<button onclick="approveOpname(\''+sku.kode+'\',\''+escHtml(sku.nama)+'\','+idx+',\''+escHtml(pd.prodate||'')+'\','+pd.pallet+','+pd.pecahan+')"'
+          + ' style="flex:1;padding:8px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">✅ Approve</button>'
+          + '<button onclick="approveOpname(\''+sku.kode+'\',\''+escHtml(sku.nama)+'\','+idx+',\''+escHtml(pd.prodate||'')+'\','+pd.pallet+','+pd.pecahan+',true)"'
+          + ' style="flex:1;padding:8px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">⚠️ Selisih</button>'
+          + '</div></div>';
+      }).join('');
+
+      return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;">'
+        + '<div style="color:#2563eb;font-weight:700;font-size:13px;">' + sku.kode + '</div>'
+        + '<div style="color:var(--text);font-size:12px;margin-bottom:4px;">' + escHtml(sku.nama) + '</div>'
+        + rows + '</div>';
+    }).join('');
+}
+
+function approveOpname(kode, nama, idx, prodate, sysPlt, sysPec, isSelisih) {
+  var aktualPlt = Number(document.getElementById('opname-plt-'+kode+'-'+idx).value);
+  var aktualPec = Number(document.getElementById('opname-pec-'+kode+'-'+idx).value);
+
+  if (isNaN(aktualPlt) || isNaN(aktualPec)) { showToast('❌ Isi jumlah aktual dulu'); return; }
+
+  var sysEff    = sysPlt + (sysPec > 0 ? 1 : 0);
+  var aktualEff = aktualPlt + (aktualPec > 0 ? 1 : 0);
+  var selisih   = aktualEff - sysEff;
+  var status    = isSelisih ? 'SELISIH' : 'OK';
+  var ket       = 'OPNAME|' + status + '|sys:' + sysEff + 'plt|aktual:' + aktualEff + 'plt|selisih:' + selisih;
+
+  // Mark row as approved
+  var row = document.getElementById('opname-row-'+kode+'-'+idx);
+  if (row) {
+    var color = isSelisih ? '#f59e0b' : '#16a34a';
+    row.style.borderLeft = '4px solid ' + color;
+    row.style.opacity    = '0.7';
+    row.innerHTML += '<div style="margin-top:8px;padding:6px 10px;background:'+color+'20;border-radius:6px;font-size:11px;font-weight:700;color:'+color+';">'
+      + (isSelisih ? '⚠️ SELISIH: ' + selisih + ' plt' : '✅ SESUAI') + '</div>';
+    // Disable buttons
+    row.querySelectorAll('button').forEach(function(b){ b.disabled = true; b.style.opacity = '0.5'; });
+  }
+
+  showToast(isSelisih ? '⚠️ Selisih dicatat' : '✅ Approved');
 }
 
 // ═══════════════════════════════════════
