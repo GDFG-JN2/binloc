@@ -629,11 +629,13 @@ input:focus, select:focus {
     <div class="form-section">
       <div class="section-label">Tipe</div>
       <div style="display:flex;gap:8px">
-        <div class="search-tipe-btn active" id="stipe-SEMUA"  onclick="setSearchTipe('SEMUA')">Semua</div>
-        <div class="search-tipe-btn" id="stipe-LOKAL"  onclick="setSearchTipe('LOKAL')">Lokal</div>
-        <div class="search-tipe-btn" id="stipe-EKSPOR" onclick="setSearchTipe('EKSPOR')">Ekspor</div>
-        <div class="search-tipe-btn" id="stipe-PETA"   onclick="setSearchTipe('PETA')">🗺️ Peta</div>
-        <div class="search-tipe-btn" id="stipe-RIWAYAT" onclick="setSearchTipe('RIWAYAT')">📋 Riwayat</div>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+        <div class="search-tipe-btn active" id="stipe-SEMUA"   onclick="setSearchTipe('SEMUA')"  style="flex-shrink:0">Semua</div>
+        <div class="search-tipe-btn"        id="stipe-LOKAL"   onclick="setSearchTipe('LOKAL')"  style="flex-shrink:0">Lokal</div>
+        <div class="search-tipe-btn"        id="stipe-EKSPOR"  onclick="setSearchTipe('EKSPOR')" style="flex-shrink:0">Ekspor</div>
+        <div class="search-tipe-btn"        id="stipe-PETA"    onclick="setSearchTipe('PETA')"   style="flex-shrink:0">🗺️ Peta</div>
+        <div class="search-tipe-btn"        id="stipe-RIWAYAT" onclick="setSearchTipe('RIWAYAT')" style="flex-shrink:0">📋 Riwayat</div>
+      </div>
       </div>
     </div>
 
