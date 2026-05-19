@@ -1,15 +1,12 @@
-// BinLoc Service Worker
-var CACHE = 'binloc-v1';
+var CACHE = 'binloc-v3';
 var ASSETS = [
   'index.html',
-  'manifest.json',
-  'https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap'
+  'manifest.json'
 ];
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE).then(function(c) {
-      // Cache assets satu per satu, abaikan yang gagal (misal font offline)
       return Promise.allSettled(ASSETS.map(function(url) {
         return c.add(url).catch(function(){});
       }));
@@ -29,17 +26,26 @@ self.addEventListener('activate', function(e) {
 
 self.addEventListener('fetch', function(e) {
   var url = e.request.url;
-
-  // Jangan cache request ke GAS (selalu fetch live)
-  if (url.includes('script.google.com')) {
+  if (url.includes('script.google.com') || url.includes('workers.dev') || url.includes('cdnjs')) {
     return;
   }
-
+  // Untuk index.html selalu ambil dari network dulu
+  if (url.includes('index.html') || url.endsWith('/')) {
+    e.respondWith(
+      fetch(e.request).then(function(resp) {
+        var clone = resp.clone();
+        caches.open(CACHE).then(function(c){ c.put(e.request, clone); });
+        return resp;
+      }).catch(function() {
+        return caches.match('index.html');
+      })
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(function(cached) {
       if (cached) return cached;
       return fetch(e.request).then(function(resp) {
-        // Cache response baru untuk assets statis
         if (resp && resp.status === 200 && e.request.method === 'GET') {
           var clone = resp.clone();
           caches.open(CACHE).then(function(c){ c.put(e.request, clone); });
@@ -47,7 +53,6 @@ self.addEventListener('fetch', function(e) {
         return resp;
       });
     }).catch(function() {
-      // Offline fallback: kembalikan halaman utama dari cache
       return caches.match('index.html');
     })
   );
