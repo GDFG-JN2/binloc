@@ -2949,7 +2949,7 @@ function loadTrialKeluar(bin) {
     '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">⏳ Memuat...</div>';
   document.getElementById('tkeluar-form').style.display = 'none';
   setTrialKAksi('KELUAR');
-  setTrialKTipe('LOKAL');
+  _trialK.tipe = 'LOKAL'; // default, akan di-override saat pilih SKU
   // Reset op chips
   document.querySelectorAll('#screen-trial-keluar .op-chip').forEach(function(c){ c.classList.remove('selected'); });
   _trialK.operator = null;
