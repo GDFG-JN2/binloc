@@ -1,6 +1,7 @@
-var CACHE = 'binloc-v3';
+var CACHE = 'binloc-v4';
 var ASSETS = [
   'index.html',
+  'operator.html',
   'manifest.json'
 ];
 
@@ -29,15 +30,15 @@ self.addEventListener('fetch', function(e) {
   if (url.includes('script.google.com') || url.includes('workers.dev') || url.includes('cdnjs')) {
     return;
   }
-  // Untuk index.html selalu ambil dari network dulu
-  if (url.includes('index.html') || url.endsWith('/')) {
+  // operator.html dan index.html selalu ambil dari network dulu
+  if (url.includes('operator.html') || url.includes('index.html') || url.endsWith('/')) {
     e.respondWith(
       fetch(e.request).then(function(resp) {
         var clone = resp.clone();
         caches.open(CACHE).then(function(c){ c.put(e.request, clone); });
         return resp;
       }).catch(function() {
-        return caches.match('index.html');
+        return caches.match(url.includes('operator.html') ? 'operator.html' : 'index.html');
       })
     );
     return;
@@ -53,7 +54,7 @@ self.addEventListener('fetch', function(e) {
         return resp;
       });
     }).catch(function() {
-      return caches.match('index.html');
+      return caches.match('operator.html');
     })
   );
 });
