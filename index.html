@@ -719,13 +719,13 @@ input:focus, select:focus {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div>
           <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Pallet Full</div>
-          <input type="number" id="tmasuk-pallet" min="0" value="0"
+          <input type="number" id="tmasuk-pallet" min="0" value="" placeholder="0"
             style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px;text-align:center;"
             oninput="calcTrialTotal()">
         </div>
         <div>
           <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Pecahan (ktn)</div>
-          <input type="number" id="tmasuk-pecahan" min="0" value="0"
+          <input type="number" id="tmasuk-pecahan" min="0" value="" placeholder="0"
             style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px;text-align:center;"
             oninput="calcTrialTotal()">
         </div>
@@ -848,13 +848,13 @@ input:focus, select:focus {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div>
           <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Pallet <span id="tkeluar-max-plt" style="color:#ef4444;"></span></div>
-          <input type="number" id="tkeluar-pallet" min="0" value="0" inputmode="numeric"
+          <input type="number" id="tkeluar-pallet" min="0" value="" placeholder="0" inputmode="numeric"
             style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:16px;font-weight:700;text-align:center;"
             oninput="calcTrialKTotal()">
         </div>
         <div>
           <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Pecahan (ktn) <span id="tkeluar-max-pec" style="color:#ef4444;"></span></div>
-          <input type="number" id="tkeluar-pecahan" min="0" value="0" inputmode="numeric"
+          <input type="number" id="tkeluar-pecahan" min="0" value="" placeholder="0" inputmode="numeric"
             style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:16px;font-weight:700;text-align:center;"
             oninput="calcTrialKTotal()">
         </div>
@@ -2943,8 +2943,8 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
   document.getElementById('tmasuk-bin-input').value      = '';
   document.getElementById('tmasuk-std').textContent      = '-';
   document.getElementById('tmasuk-tersedia').textContent = '-';
-  document.getElementById('tmasuk-pallet').value  = '0';
-  document.getElementById('tmasuk-pecahan').value = '0';
+  document.getElementById('tmasuk-pallet').value = '';
+  document.getElementById('tmasuk-pecahan').value = '';
   document.getElementById('tmasuk-total').textContent = '0';
 
   _trialScannedSku = { kode: skuKode, nama: '', std: 0, prodate: prodateVal || '', quotation: quotationVal || '' };
@@ -3195,8 +3195,8 @@ function selectTrialKSku(kode, nama, tipe) {
 
   document.getElementById('tkeluar-sku-kode').textContent = kode;
   document.getElementById('tkeluar-sku-nama').textContent = nama;
-  document.getElementById('tkeluar-pallet').value  = '0';
-  document.getElementById('tkeluar-pecahan').value = '0';
+  document.getElementById('tkeluar-pallet').value = '';
+  document.getElementById('tkeluar-pecahan').value = '';
   document.getElementById('tkeluar-total').textContent = '0';
   document.getElementById('tkeluar-form').style.display = 'block';
   document.getElementById('tkeluar-std-info').style.display = 'none';
@@ -3295,8 +3295,8 @@ function selectTrialKProdate(prodate, maxPlt, maxPec, maxKtn, quotation) {
   document.getElementById('tkeluar-std-info').style.display = 'block';
 
   // Reset input
-  document.getElementById('tkeluar-pallet').value  = '0';
-  document.getElementById('tkeluar-pecahan').value = '0';
+  document.getElementById('tkeluar-pallet').value = '';
+  document.getElementById('tkeluar-pecahan').value = '';
   calcTrialKTotal();
 }
 
@@ -3331,8 +3331,8 @@ function startScanBinTujuan() {
 
 function resetTrialKForm() {
   document.getElementById('tkeluar-form').style.display = 'none';
-  document.getElementById('tkeluar-pallet').value  = '0';
-  document.getElementById('tkeluar-pecahan').value = '0';
+  document.getElementById('tkeluar-pallet').value = '';
+  document.getElementById('tkeluar-pecahan').value = '';
   _trialK.prodate = null;
   _trialK.sku     = null;
 }
