@@ -3148,6 +3148,15 @@ function renderTrialKeluar(data) {
   var seen = {}, deduped = [];
   data.forEach(function(s) { if (!seen[s.kode]) { seen[s.kode] = true; deduped.push(s); } });
 
+  // Kalau hanya 1 SKU langsung auto-select, skip pilihan
+  if (deduped.length === 1) {
+    var s = deduped[0];
+    var tipe = String(s.tipe || 'LOKAL').toUpperCase();
+    selectTrialKSku(s.kode, s.nama, tipe);
+    wrap.innerHTML = '';
+    return;
+  }
+
   wrap.innerHTML = deduped.map(function(sku) {
     var eff    = (sku.pallet||0) + ((sku.pecahan||0) > 0 ? 1 : 0);
     var tipe   = String(sku.tipe || 'LOKAL').toUpperCase();
@@ -3439,27 +3448,43 @@ function renderTrialOpname(data) {
 
   list.innerHTML = data.map(function(sku) {
     var rows = (sku.prodates || []).map(function(pd, idx) {
-      var sysPlt = pd.pallet  || 0;
-      var sysPec = pd.pecahan || 0;
-      var sysKtn = pd.karton  || 0;
-      var rowId  = 'oprow-' + sku.kode + '-' + idx;
-      var skuE   = sku.kode;
-      var namE   = (sku.nama||'').replace(/'/g,"\'");
-      var pdE    = (pd.prodate||'').replace(/'/g,"\'");
+      var sysPlt  = pd.pallet    || 0;
+      var sysPec  = pd.pecahan   || 0;
+      var sysKtn  = pd.karton    || 0;
+      var sysQt   = pd.quotation || '';
+      var sysTipe = String(pd.tipe || sku.tipe || 'LOKAL').toUpperCase();
+      var isEksp  = sysTipe === 'EKSPOR';
+      var rowId   = 'oprow-' + sku.kode + '-' + idx;
+      var skuE    = sku.kode;
+      var namE    = (sku.nama||'').replace(/'/g, "\\'");
+      var pdE     = (pd.prodate||'').replace(/'/g, "\\'");
+      var qtE     = sysQt.replace(/'/g, "\\'");
+
+      var qtBadge = isEksp && sysQt
+        ? '<div style="font-size:10px;color:#7c3aed;margin-bottom:8px;">🔖 ' + sysQt + '</div>'
+        : '';
+      var ekspBadge = isEksp
+        ? '<span style="font-size:9px;font-weight:700;color:#7c3aed;background:#7c3aed15;border:1px solid #7c3aed40;border-radius:4px;padding:1px 6px;margin-right:4px;">EKSPOR</span>'
+        : '';
+      var qtInput = isEksp
+        ? '<div style="margin-bottom:8px;"><div style="font-size:10px;color:#7c3aed;font-weight:700;margin-bottom:3px;">Quotation Aktual <span style="color:var(--muted);font-weight:400;">(kosongkan = pakai QT sistem)</span></div>'
+          + '<input type="text" id="' + rowId + '-qt" placeholder="' + (sysQt||'QT-XXXXX') + '" style="width:100%;padding:9px;border:1.5px solid #7c3aed60;border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--mono);"></div>'
+        : '<input type="hidden" id="' + rowId + '-qt" value="">';
 
       return '<div id="' + rowId + '" style="background:var(--surface2);border-radius:8px;padding:10px;margin-top:8px;border:1.5px solid transparent;transition:border-color .2s,background .2s;">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
         + '<span style="font-size:11px;color:var(--muted);">Prodate: <b style="color:var(--text);">' + (pd.prodate||'-') + '</b></span>'
-        + '<span style="font-size:11px;background:#2563eb15;color:#2563eb;border:1px solid #2563eb40;border-radius:4px;padding:2px 8px;font-weight:700;">' + sysPlt + 'p + ' + sysPec + 'ktn</span>'
+        + '<div>' + ekspBadge + '<span style="font-size:11px;background:#2563eb15;color:#2563eb;border:1px solid #2563eb40;border-radius:4px;padding:2px 8px;font-weight:700;">' + sysPlt + 'p + ' + sysPec + 'ktn</span></div>'
         + '</div>'
+        + qtBadge
         + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:10px;">'
         + '<div><div style="font-size:9px;color:var(--muted);">PALLET</div><div style="font-weight:800;font-size:16px;">' + sysPlt + '</div></div>'
         + '<div><div style="font-size:9px;color:var(--muted);">PECAHAN</div><div style="font-weight:800;font-size:16px;">' + sysPec + '<span style="font-size:9px;color:var(--muted);">ktn</span></div></div>'
         + '<div><div style="font-size:9px;color:var(--muted);">TOTAL KTN</div><div style="font-weight:800;font-size:16px;color:#2563eb;">' + sysKtn + '</div></div>'
         + '</div>'
         + '<div id="' + rowId + '-btns" style="display:flex;gap:8px;">'
-        + '<button onclick="opnameSesuai(\'' + skuE + '\',\'' + namE + '\',' + idx + ',\'' + pdE + '\',' + sysPlt + ',' + sysPec + ',' + sysKtn + ')" style="flex:1;padding:10px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">✅ Sesuai</button>'
-        + '<button onclick="opnameTidakSesuai(\'' + rowId + '\',\'' + pdE + '\')" style="flex:1;padding:10px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">❌ Tidak Sesuai</button>'
+        + '<button onclick="opnameSesuai(\'' + skuE + '\',\'' + namE + '\',' + idx + ',\'' + pdE + '\',' + sysPlt + ',' + sysPec + ',' + sysKtn + ',\'' + qtE + '\',\'' + sysTipe + '\')" style="flex:1;padding:10px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">✅ Sesuai</button>'
+        + '<button onclick="opnameTidakSesuai(\'' + rowId + '\',\'' + pdE + '\',\'' + qtE + '\',' + isEksp + ')" style="flex:1;padding:10px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">❌ Tidak Sesuai</button>'
         + '</div>'
         + '<div id="' + rowId + '-form" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">'
         + '<div style="font-size:10px;color:#ef4444;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Input Aktual di Lapangan</div>'
@@ -3469,9 +3494,10 @@ function renderTrialOpname(data) {
         + '<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Pecahan Aktual (ktn)</div>'
         + '<input type="number" min="0" id="' + rowId + '-pec" placeholder="0" style="width:100%;padding:9px;border:1.5px solid #ef444460;border-radius:6px;background:var(--surface);color:var(--text);font-size:14px;text-align:center;font-weight:700;"></div>'
         + '</div>'
-        + '<div style="margin-bottom:8px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Prodate Aktual</div>'
+        + '<div style="margin-bottom:8px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Prodate Aktual <span style="color:var(--muted);font-weight:400;">(kosongkan = pakai prodate sistem)</span></div>'
         + '<input type="date" id="' + rowId + '-prodate" style="width:100%;padding:9px;border:1.5px solid #ef444460;border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;"></div>'
-        + '<button onclick="opnameSimpanSelisih(\'' + skuE + '\',\'' + namE + '\',' + idx + ',\'' + pdE + '\',' + sysPlt + ',' + sysPec + ',' + sysKtn + ')" style="width:100%;padding:10px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">💾 Simpan Perbaikan</button>'
+        + qtInput
+        + '<button onclick="opnameSimpanSelisih(\'' + skuE + '\',\'' + namE + '\',' + idx + ',\'' + pdE + '\',\'' + qtE + '\',\'' + sysTipe + '\',' + sysPlt + ',' + sysPec + ',' + sysKtn + ')" style="width:100%;padding:10px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">💾 Simpan Perbaikan</button>'
         + '</div>'
         + '</div>';
     }).join('');
@@ -3488,9 +3514,10 @@ function _getKeeper() {
   return el ? el.value.trim() : '';
 }
 
-function opnameTidakSesuai(rowId, prodate) {
+function opnameTidakSesuai(rowId, prodate, quotation, isEksp) {
   document.getElementById(rowId + '-btns').style.display = 'none';
   document.getElementById(rowId + '-form').style.display = 'block';
+  // Pre-fill prodate sistem (kosongkan = pakai sistem)
   var pdEl = document.getElementById(rowId + '-prodate');
   if (pdEl && prodate) {
     if (prodate.includes('/')) {
@@ -3500,16 +3527,16 @@ function opnameTidakSesuai(rowId, prodate) {
   }
 }
 
-function opnameSesuai(kode, nama, idx, prodate, sysPlt, sysPec, sysKtn) {
+function opnameSesuai(kode, nama, idx, prodate, sysPlt, sysPec, sysKtn, sysQt, sysTipe) {
   var keeper = _getKeeper();
   if (!keeper) { showToast('❌ Isi nama stock keeper dulu'); return; }
   var rowId = 'oprow-' + kode + '-' + idx;
   var bin   = _trialScannedBin;
   var payload = {
-    aksi: 'OPNAME', tipe: 'LOKAL', binLoc: bin,
+    aksi: 'OPNAME', tipe: sysTipe || 'LOKAL', binLoc: bin,
     skuKode: kode, skuNama: nama,
     pallet: sysPlt, pecahan: sysPec, totalKarton: sysKtn,
-    prodate: prodate, quotation: '', operator: keeper,
+    prodate: prodate, quotation: sysQt || '', operator: keeper,
     keterangan: 'SESUAI', isSelisih: false
   };
   showLoading(true);
@@ -3525,21 +3552,24 @@ function opnameSesuai(kode, nama, idx, prodate, sysPlt, sysPec, sysKtn) {
   }, function() { showLoading(false); showToast('❌ Gagal simpan'); });
 }
 
-function opnameSimpanSelisih(kode, nama, idx, prodateAsli, sysPlt, sysPec, sysKtn) {
+function opnameSimpanSelisih(kode, nama, idx, prodateAsli, qtAsli, sysTipe, sysPlt, sysPec, sysKtn) {
   var keeper = _getKeeper();
   if (!keeper) { showToast('❌ Isi nama stock keeper dulu'); return; }
   var rowId      = 'oprow-' + kode + '-' + idx;
   var aktualPlt  = Number(document.getElementById(rowId + '-plt').value)    || 0;
   var aktualPec  = Number(document.getElementById(rowId + '-pec').value)    || 0;
-  var aktualProd = document.getElementById(rowId + '-prodate').value || prodateAsli;
+  // Fallback ke nilai sistem jika tidak diisi
+  var aktualProd = document.getElementById(rowId + '-prodate').value.trim() || prodateAsli;
+  var qtEl       = document.getElementById(rowId + '-qt');
+  var aktualQt   = (qtEl ? qtEl.value.trim() : '') || qtAsli || '';
   var bin        = _trialScannedBin;
   var std        = (sysPlt > 0) ? Math.round((sysKtn - sysPec) / sysPlt) : 0;
   var aktualKtn  = (aktualPlt * (std || 0)) + aktualPec;
   var payload = {
-    aksi: 'OPNAME', tipe: 'LOKAL', binLoc: bin,
+    aksi: 'OPNAME', tipe: sysTipe || 'LOKAL', binLoc: bin,
     skuKode: kode, skuNama: nama,
     pallet: aktualPlt, pecahan: aktualPec, totalKarton: aktualKtn, std: std,
-    prodate: aktualProd, quotation: '', operator: keeper,
+    prodate: aktualProd, quotation: aktualQt, operator: keeper,
     keterangan: 'TIDAK SESUAI | Sistem: ' + sysPlt + 'p/' + sysPec + 'ktn → Aktual: ' + aktualPlt + 'p/' + aktualPec + 'ktn',
     isSelisih: true, prodateAsli: prodateAsli, sysPlt: sysPlt, sysPec: sysPec
   };
