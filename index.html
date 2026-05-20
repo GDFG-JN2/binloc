@@ -2885,6 +2885,8 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
   }
 
   showScreen('screen-trial-masuk');
+  // Langsung buka kamera untuk scan bin loc
+  setTimeout(function(){ startScanBinForMasuk(); }, 300);
 }
 
 function confirmTrialBin() {
