@@ -723,9 +723,9 @@ input:focus, select:focus {
           style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;">
       </div>
       <div id="tmasuk-quotation-wrap" style="display:none;margin-bottom:10px;">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Quotation No.</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Quotation No. <span style="background:#7c3aed;color:#fff;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;vertical-align:middle;">EKSPOR</span></div>
         <input type="text" id="tmasuk-quotation" placeholder="QT-XXXXX"
-          style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--mono);">
+          style="width:100%;padding:10px;border:1px solid #7c3aed60;border-radius:8px;background:#7c3aed08;color:var(--text);font-size:13px;font-family:var(--mono);">
       </div>
       <div style="margin-bottom:14px;">
         <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Operator</div>
@@ -2757,8 +2757,27 @@ function isBinLoc(code) {
   return /^[A-Za-z]\d{1,3}$/.test(code.trim());
 }
 function isSkuCode(code) {
-  // Format SKU: angka 5+ digit
-  return /^\d{5,}$/.test(code.trim());
+  // Format SKU lama: angka 5-6 digit saja (tanpa prodate/quotation)
+  return /^\d{5,6}$/.test(code.trim());
+}
+
+// Format QR barang baru: 6 SKU + 8 prodate (DDMMYYYY) + sisa quotation
+// Contoh: 41028019042026242424212
+//          └─ SKU ┘└─prodate─┘└quotation┘
+function isQrBarang(code) {
+  return /^\d{15,}$/.test(code.trim());
+}
+function parseQrBarang(code) {
+  code = code.trim();
+  var sku       = code.substring(0, 6);
+  var prodRaw   = code.substring(6, 14); // DDMMYYYY
+  var quotation = code.substring(14);
+  // Convert DDMMYYYY → YYYY-MM-DD
+  var dd   = prodRaw.substring(0, 2);
+  var mm   = prodRaw.substring(2, 4);
+  var yyyy = prodRaw.substring(4, 8);
+  var prodate = yyyy + '-' + mm + '-' + dd;
+  return { sku: sku, prodate: prodate, quotation: quotation };
 }
 
 function processScanResult(raw) {
@@ -2789,10 +2808,14 @@ function processScanResult(raw) {
     return;
   }
 
-  // transaksi: deteksi SKU vs Bin
-  if (isSkuCode(raw)) {
+  // transaksi: deteksi QR baru (SKU+prodate+quotation) vs SKU lama vs Bin
+  if (isQrBarang(raw)) {
     stopScanner();
-    openTrialMasuk(raw);
+    var parsed = parseQrBarang(raw);
+    openTrialMasuk(parsed.sku, parsed.prodate, parsed.quotation);
+  } else if (isSkuCode(raw)) {
+    stopScanner();
+    openTrialMasuk(raw, null, null);
   } else if (isBinLoc(raw)) {
     stopScanner();
     loadTrialKeluar(raw);
@@ -2806,7 +2829,7 @@ function processScanResult(raw) {
 // ═══════════════════════════════════════
 // TRIAL MASUK
 // ═══════════════════════════════════════
-function openTrialMasuk(skuKode) {
+function openTrialMasuk(skuKode, prodateVal, quotationVal) {
   document.getElementById('tmasuk-sku-kode').textContent = skuKode;
   document.getElementById('tmasuk-sku-nama').textContent = 'Memuat...';
   document.getElementById('tmasuk-form').style.display   = 'none';
@@ -2819,10 +2842,25 @@ function openTrialMasuk(skuKode) {
 
   _trialScannedSku = { kode: skuKode, nama: '', std: 0 };
 
-  // Set today as default prodate
-  var today = new Date();
-  document.getElementById('tmasuk-prodate').value =
-    today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  // Prodate: dari QR jika ada, fallback hari ini
+  if (prodateVal) {
+    document.getElementById('tmasuk-prodate').value = prodateVal;
+  } else {
+    var today = new Date();
+    document.getElementById('tmasuk-prodate').value =
+      today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  }
+
+  // Quotation: dari QR jika ada
+  var qtWrap = document.getElementById('tmasuk-quotation-wrap');
+  var qtInput = document.getElementById('tmasuk-quotation');
+  if (quotationVal) {
+    qtInput.value = quotationVal;
+    qtWrap.style.display = 'block';
+  } else {
+    qtInput.value = '';
+    qtWrap.style.display = 'none';
+  }
 
   // Lookup SKU nama + STD
   gasCall('getStdBySku', skuKode, function(std) {
@@ -2873,15 +2911,18 @@ function submitTrialMasuk() {
   var std      = _trialScannedSku ? _trialScannedSku.std : 0;
   var total    = (plt * std) + pec;
   var prodate  = document.getElementById('tmasuk-prodate').value;
-  var quotation= document.getElementById('tmasuk-quotation') ? document.getElementById('tmasuk-quotation').value : '';
+  var quotation = document.getElementById('tmasuk-quotation').value.trim();
   var operator = document.getElementById('tmasuk-operator').value.trim();
 
-  if (!bin)      { showToast('❌ Bin Loc belum diisi'); return; }
+  // Auto tipe: EKSPOR jika ada quotation, LOKAL jika tidak
+  var tipe = quotation ? 'EKSPOR' : 'LOKAL';
+
+  if (!bin)            { showToast('❌ Bin Loc belum diisi'); return; }
   if (plt + pec === 0) { showToast('❌ Jumlah pallet/pecahan 0'); return; }
-  if (!prodate)  { showToast('❌ Prodate belum diisi'); return; }
+  if (!prodate)        { showToast('❌ Prodate belum diisi'); return; }
 
   var payload = {
-    aksi: 'MASUK', tipe: 'LOKAL',
+    aksi: 'MASUK', tipe: tipe,
     binLoc: bin, binTujuan: '',
     skuKode: _trialScannedSku.kode, skuNama: _trialScannedSku.nama,
     pallet: plt, pecahan: pec, totalKarton: total, std: std,
