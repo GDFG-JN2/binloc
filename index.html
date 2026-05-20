@@ -3556,15 +3556,21 @@ function opnameSimpanSelisih(kode, nama, idx, prodateAsli, qtAsli, sysTipe, sysP
   var keeper = _getKeeper();
   if (!keeper) { showToast('❌ Isi nama stock keeper dulu'); return; }
   var rowId      = 'oprow-' + kode + '-' + idx;
-  var aktualPlt  = Number(document.getElementById(rowId + '-plt').value)    || 0;
-  var aktualPec  = Number(document.getElementById(rowId + '-pec').value)    || 0;
-  // Fallback ke nilai sistem jika tidak diisi
+  var pltInput   = document.getElementById(rowId + '-plt').value.trim();
+  var pecInput   = document.getElementById(rowId + '-pec').value.trim();
+  // Kalau dikosongkan → pakai nilai sistem
+  var aktualPlt  = pltInput !== '' ? (Number(pltInput) || 0) : sysPlt;
+  var aktualPec  = pecInput !== '' ? (Number(pecInput) || 0) : sysPec;
+  // Fallback prodate ke nilai sistem jika tidak diisi
   var aktualProd = document.getElementById(rowId + '-prodate').value.trim() || prodateAsli;
   var qtEl       = document.getElementById(rowId + '-qt');
   var aktualQt   = (qtEl ? qtEl.value.trim() : '') || qtAsli || '';
   var bin        = _trialScannedBin;
   var std        = (sysPlt > 0) ? Math.round((sysKtn - sysPec) / sysPlt) : 0;
-  var aktualKtn  = (aktualPlt * (std || 0)) + aktualPec;
+  // Kalau pallet & pecahan keduanya pakai sistem → karton juga sistem
+  var aktualKtn  = (pltInput === '' && pecInput === '')
+    ? sysKtn
+    : (aktualPlt * (std || 0)) + aktualPec;
   var payload = {
     aksi: 'OPNAME', tipe: sysTipe || 'LOKAL', binLoc: bin,
     skuKode: kode, skuNama: nama,
