@@ -2927,9 +2927,9 @@ function processScanResult(raw) {
     stopScanner();
     loadTrialKeluar(raw);
   } else {
-    // Coba sebagai bin loc juga kalau tidak cocok keduanya
-    stopScanner();
-    loadTrialKeluar(raw);
+    // QR tidak dikenali — tampilkan error, scan ulang
+    showToast('❌ QR tidak dikenali: ' + raw);
+    scanLoop();
   }
 }
 
