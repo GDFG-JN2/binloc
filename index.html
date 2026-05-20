@@ -558,9 +558,9 @@ input:focus, select:focus {
 
   </div>
 
-    <div class="tipe-card" style="border-color:#f43f5e40;background:#f43f5e08;" onclick="showScreen('screen-trial-pw')">
+    <div class="tipe-card" style="border-color:#f43f5e40;background:#f43f5e08;" onclick="showScreen('screen-trial-home')">
       <div class="card-icon">🧪</div>
-      <div class="card-label" style="color:#f43f5e">Trial</div>
+      <div class="card-label" style="color:#f43f5e">Scan QR</div>
       <div class="card-desc">Scan QR Code — Transaksi & Opname</div>
     </div>
   </div>
@@ -574,23 +574,7 @@ input:focus, select:focus {
 <!-- ═══════════════════════════════
      SCREEN: TRIAL PASSWORD
 ═══════════════════════════════ -->
-<div class="screen" id="screen-trial-pw">
-  <div class="app-header">
-    <div class="back-btn" onclick="goHome()">←</div>
-    <div class="title-group"><h2>Trial</h2><div class="sub">Masukkan password</div></div>
-  </div>
-  <div class="screen-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:20px;padding:40px 24px;">
-    <div style="font-size:48px">🔐</div>
-    <div style="font-size:15px;font-weight:700;color:var(--text)">Password Diperlukan</div>
-    <div style="width:100%;max-width:300px;">
-      <input id="trial-pw-input" type="password" placeholder="Masukkan password..."
-        style="width:100%;padding:14px;border:2px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-family:var(--mono);text-align:center;"
-        onkeydown="if(event.key==='Enter') checkTrialPw()">
-      <div id="trial-pw-error" style="color:#ef4444;font-size:12px;text-align:center;margin-top:8px;display:none;">Password salah</div>
-    </div>
-    <button onclick="checkTrialPw()" style="padding:12px 40px;background:#f43f5e;color:#fff;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;">Masuk</button>
-  </div>
-</div>
+
 
 <!-- ═══════════════════════════════
      SCREEN: TRIAL HOME
@@ -598,7 +582,7 @@ input:focus, select:focus {
 <div class="screen" id="screen-trial-home">
   <div class="app-header">
     <div class="back-btn" onclick="goHome()">←</div>
-    <div class="title-group"><h2>Trial 🧪</h2><div class="sub">Pilih mode</div></div>
+    <div class="title-group"><h2>Scan QR</h2><div class="sub">Pilih mode</div></div>
   </div>
   <div class="screen-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;padding:24px;">
     <div class="tipe-card" style="width:100%;max-width:360px;border-color:#2563eb40;background:#2563eb08;" onclick="startTrialScan('transaksi')">
