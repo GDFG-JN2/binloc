@@ -728,10 +728,13 @@ input:focus, select:focus {
           style="width:100%;padding:10px;border:1px solid #7c3aed60;border-radius:8px;background:#7c3aed08;color:var(--text);font-size:13px;font-family:var(--mono);">
       </div>
       <div style="margin-bottom:14px;">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Operator</div>
-        <input type="text" id="tmasuk-operator"
-          style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--mono);"
-          placeholder="Nama operator...">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Operator</div>
+        <div class="operator-chips">
+          <div class="op-chip" onclick="pilihTrialMOp(this,'A')">A</div>
+          <div class="op-chip" onclick="pilihTrialMOp(this,'B')">B</div>
+          <div class="op-chip" onclick="pilihTrialMOp(this,'C')">C</div>
+        </div>
+        <input type="hidden" id="tmasuk-operator" value="">
       </div>
       <div style="display:flex;gap:8px;">
         <button onclick="startTrialScan('transaksi')" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-weight:700;color:var(--muted);cursor:pointer;">Batal</button>
@@ -2842,6 +2845,10 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
 
   _trialScannedSku = { kode: skuKode, nama: '', std: 0 };
 
+  // Reset operator chips
+  document.getElementById('tmasuk-operator').value = '';
+  document.querySelectorAll('#screen-trial-masuk .op-chip').forEach(function(c) { c.classList.remove('selected'); });
+
   // Prodate: dari QR jika ada, fallback hari ini
   if (prodateVal) {
     document.getElementById('tmasuk-prodate').value = prodateVal;
@@ -2934,7 +2941,7 @@ function submitTrialMasuk() {
     showLoading(false);
     if (res && res.ok) {
       showToast('✅ Masuk berhasil disimpan!');
-      setTimeout(function(){ startTrialScan('transaksi'); }, 1000);
+      setTimeout(function(){ startTrialScan('transaksi'); }, 800);
     } else {
       showToast('❌ Gagal: ' + (res ? res.msg : 'Error'));
     }
@@ -2974,6 +2981,12 @@ function setTrialKAksi(aksi) {
   }
   var title = document.getElementById('tkeluar-title');
   if (title) title.textContent = aksi === 'PINDAH' ? 'Pindah Barang' : 'Keluar Barang';
+}
+
+function pilihTrialMOp(el, nama) {
+  document.getElementById('tmasuk-operator').value = nama;
+  document.querySelectorAll('#screen-trial-masuk .op-chip').forEach(function(c) { c.classList.remove('selected'); });
+  el.classList.add('selected');
 }
 
 function pilihTrialKOp(el, nama) {
