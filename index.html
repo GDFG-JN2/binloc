@@ -420,6 +420,9 @@ input:focus, select:focus {
 }
 .search-card:hover { border-color: var(--accent3) !important; }
 
+.scan-card::before { background: linear-gradient(135deg, #0ea5e910, #06b6d408); }
+.scan-card:hover { border-color: #0ea5e9 !important; }
+
 /* ── SEARCH TIPE TOGGLE ── */
 .search-tipe-btn {
   padding: 8px 16px; border-radius: 20px;
@@ -555,14 +558,12 @@ input:focus, select:focus {
       <div class="card-label" style="color:var(--accent3)">Cari Posisi Barang</div>
       <div class="card-desc">Cari bin loc berdasarkan SKU / Prodate / Quotation</div>
     </div>
-
-  </div>
-
-    <div class="tipe-card" onclick="showScreen('screen-trial-home')">
+    <div class="tipe-card scan-card" onclick="showScreen('screen-trial-home')">
       <div class="card-icon">📷</div>
-      <div class="card-label">Scan QR</div>
+      <div class="card-label" style="color:#0ea5e9">Scan QR</div>
       <div class="card-desc">Scan QR Code — Transaksi & Opname</div>
     </div>
+
   </div>
 
   <!-- Update App button -->
