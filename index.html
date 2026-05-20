@@ -2866,7 +2866,7 @@ function isSkuCode(code) {
 // Contoh: 41028019042026242424212
 //          └─ SKU ┘└─prodate─┘└quotation┘
 function isQrBarang(code) {
-  return /^\d{15,}$/.test(code.trim());
+  return /^\d{14,}$/.test(code.trim());
 }
 function parseQrBarang(code) {
   code = code.trim();
