@@ -3452,7 +3452,7 @@ function renderTrialOpname(data) {
       var sysPec  = pd.pecahan   || 0;
       var sysKtn  = pd.karton    || 0;
       var sysQt   = pd.quotation || '';
-      var sysTipe = String(pd.tipe || sku.tipe || 'LOKAL').toUpperCase();
+      var sysTipe = String(pd.tipe || sku.tipe || (sysQt ? 'EKSPOR' : 'LOKAL')).toUpperCase();
       var isEksp  = sysTipe === 'EKSPOR';
       var rowId   = 'oprow-' + sku.kode + '-' + idx;
       var skuE    = sku.kode;
