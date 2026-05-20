@@ -12,6 +12,7 @@
 <meta name="theme-color" content="#f0f2f5">
 <link rel="manifest" href="manifest.json">
 <title>BinLoc Operator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
 
@@ -2768,10 +2769,14 @@ function startCamera() {
     _scanStream = stream;
     video.srcObject = stream;
     video.play();
+    status.textContent = '🔍 Arahkan ke QR Code...';
 
     if (typeof BarcodeDetector !== 'undefined') {
       _scanDetector = new BarcodeDetector({ formats: ['qr_code'] });
-      status.textContent = '🔍 Arahkan ke QR Code...';
+      scanLoop();
+    } else if (typeof jsQR !== 'undefined') {
+      // Fallback jsQR — works di Safari
+      _scanDetector = 'jsqr';
       scanLoop();
     } else {
       status.textContent = '⚠️ Auto-scan tidak didukung — ketik kode manual di bawah';
@@ -2783,11 +2788,34 @@ function startCamera() {
 
 function scanLoop() {
   var video  = document.getElementById('scan-video');
+  var canvas = document.getElementById('scan-canvas');
   var status = document.getElementById('scan-status');
   if (!_scanStream || !_scanDetector) return;
 
   _scanAnimFrame = requestAnimationFrame(function() {
     if (!_scanStream || !_scanDetector) return;
+
+    // jsQR path (Safari + browser lain tanpa BarcodeDetector)
+    if (_scanDetector === 'jsqr') {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+        if (code && code.data) {
+          status.textContent = '✅ QR: ' + code.data;
+          stopScanner();
+          setTimeout(function() { processScanResult(code.data); }, 150);
+          return;
+        }
+      }
+      scanLoop();
+      return;
+    }
+
+    // BarcodeDetector path (Chrome, Android)
     _scanDetector.detect(video).then(function(codes) {
       if (codes.length > 0) {
         var raw = codes[0].rawValue;
