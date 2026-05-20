@@ -2960,9 +2960,8 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
     document.getElementById('tmasuk-sku-nama').textContent = '(nama tidak ditemukan)';
   }
 
-  showScreen('screen-trial-masuk');
-  // Langsung buka kamera untuk scan bin loc
-  setTimeout(function(){ startScanBinForMasuk(); }, 900);
+  // Langsung buka kamera scan bin, skip halaman input manual
+  startScanBinForMasuk();
 }
 
 function confirmTrialBin() {
