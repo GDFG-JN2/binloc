@@ -753,6 +753,11 @@ input:focus, select:focus {
         </div>
         <input type="hidden" id="tmasuk-operator" value="">
       </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Keterangan <span style="color:var(--muted);font-weight:400;">(opsional)</span></div>
+        <textarea id="tmasuk-keterangan" rows="2" placeholder="Catatan tambahan..."
+          style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--mono);resize:none;"></textarea>
+      </div>
       <div style="display:flex;gap:8px;">
         <button onclick="startTrialScan('transaksi')" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-weight:700;color:var(--muted);cursor:pointer;">Batal</button>
         <button onclick="submitTrialMasuk()" style="flex:2;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;">✅ Simpan Masuk</button>
@@ -874,6 +879,13 @@ input:focus, select:focus {
           <div class="op-chip" onclick="pilihTrialKOp(this,'B')">B</div>
           <div class="op-chip" onclick="pilihTrialKOp(this,'C')">C</div>
         </div>
+      </div>
+
+      <!-- Keterangan -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Keterangan <span style="color:var(--muted);font-weight:400;">(opsional)</span></div>
+        <textarea id="tkeluar-keterangan" rows="2" placeholder="Catatan tambahan..."
+          style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--mono);resize:none;"></textarea>
       </div>
 
       <!-- Submit -->
@@ -2951,6 +2963,7 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
 
   // Reset operator chips
   document.getElementById('tmasuk-operator').value = '';
+  document.getElementById('tmasuk-keterangan').value = '';
   document.querySelectorAll('#screen-trial-masuk .op-chip').forEach(function(c) { c.classList.remove('selected'); });
 
   // Prodate: dari QR jika ada, fallback hari ini
@@ -3025,6 +3038,7 @@ function submitTrialMasuk() {
   var prodate  = document.getElementById('tmasuk-prodate').value;
   var quotation = document.getElementById('tmasuk-quotation').value.trim();
   var operator = document.getElementById('tmasuk-operator').value.trim();
+  var keterangan = document.getElementById('tmasuk-keterangan').value.trim();
 
   // Auto tipe: EKSPOR jika ada quotation, LOKAL jika tidak
   var tipe = quotation ? 'EKSPOR' : 'LOKAL';
@@ -3038,7 +3052,7 @@ function submitTrialMasuk() {
     binLoc: bin, binTujuan: '',
     skuKode: _trialScannedSku.kode, skuNama: _trialScannedSku.nama,
     pallet: plt, pecahan: pec, totalKarton: total, std: std,
-    prodate: prodate, quotation: quotation, operator: operator, keterangan: 'TRIAL'
+    prodate: prodate, quotation: quotation, operator: operator, keterangan: keterangan || 'TRIAL'
   };
 
   showLoading(true);
@@ -3333,6 +3347,7 @@ function resetTrialKForm() {
   document.getElementById('tkeluar-form').style.display = 'none';
   document.getElementById('tkeluar-pallet').value = '';
   document.getElementById('tkeluar-pecahan').value = '';
+  document.getElementById('tkeluar-keterangan').value = '';
   _trialK.prodate = null;
   _trialK.sku     = null;
 }
@@ -3341,7 +3356,8 @@ function submitTrialKeluar() {
   var plt      = Number(document.getElementById('tkeluar-pallet').value)  || 0;
   var pec      = Number(document.getElementById('tkeluar-pecahan').value) || 0;
   var total    = Number(document.getElementById('tkeluar-total').textContent) || 0;
-  var operator = document.getElementById('tkeluar-operator').value.trim();
+  var operator = _trialK.operator || '';
+  var keterangan = document.getElementById('tkeluar-keterangan').value.trim();
   var binTujuan= (_trialK.aksi === 'PINDAH') ? document.getElementById('tkeluar-bin-tujuan').value.trim().toUpperCase() : '';
 
   if (!_trialK.sku)      { showToast('❌ Pilih barang dulu'); return; }
@@ -3364,7 +3380,7 @@ function submitTrialKeluar() {
     prodate:    _trialK.prodate,
     quotation:  _trialK.quotation,
     operator:   _trialK.operator,
-    keterangan: 'TRIAL'
+    keterangan: keterangan || 'TRIAL'
   };
 
   showLoading(true);
