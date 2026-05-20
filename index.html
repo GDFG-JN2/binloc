@@ -618,7 +618,7 @@ input:focus, select:focus {
 ═══════════════════════════════ -->
 <div class="screen" id="screen-trial-scan">
   <div class="app-header">
-    <div class="back-btn" onclick="stopScanner();showScreen('screen-trial-home')">←</div>
+    <div class="back-btn" id="scan-back-btn" onclick="scanGoBack()">←</div>
     <div class="title-group">
       <h2 id="scan-title">Scanner</h2>
       <div class="sub" id="scan-sub">Arahkan kamera ke QR Code</div>
@@ -653,6 +653,22 @@ input:focus, select:focus {
 
       <!-- Status text -->
       <div id="scan-status" style="position:absolute;bottom:0;left:0;right:0;text-align:center;color:#fff;font-size:12px;font-weight:600;background:rgba(0,0,0,0.65);padding:10px;"></div>
+    </div>
+
+    <!-- Banner SKU — muncul saat mode bin-for-masuk -->
+    <div id="scan-sku-banner" style="display:none;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:none;">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Barang yang akan masuk</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div>
+          <span id="scan-banner-kode" style="color:#2563eb;font-weight:800;font-size:13px;"></span>
+          <span id="scan-banner-tipe" style="margin-left:6px;padding:1px 7px;border-radius:4px;font-size:9px;font-weight:700;"></span>
+          <div id="scan-banner-nama" style="color:var(--text);font-size:11px;margin-top:1px;"></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div id="scan-banner-prodate" style="font-size:10px;color:var(--muted);"></div>
+          <div id="scan-banner-qt" style="font-size:10px;color:#7c3aed;font-weight:700;display:none;"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Manual input -->
@@ -2665,6 +2681,7 @@ function startTrialScan(mode) {
   _scanPurpose  = mode;
   _trialScannedSku = null;
   _trialScannedBin = null;
+  document.getElementById('scan-sku-banner').style.display = 'none';
 
   var title = document.getElementById('scan-title');
   var sub   = document.getElementById('scan-sub');
@@ -2679,14 +2696,56 @@ function startTrialScan(mode) {
   startCamera();
 }
 
+function scanGoBack() {
+  stopScanner();
+  if (_scanPurpose === 'bin-for-masuk') {
+    showScreen('screen-trial-masuk');
+  } else {
+    showScreen('screen-trial-home');
+  }
+}
+
 function startScanBinForMasuk() {
   _scanPurpose = 'bin-for-masuk';
   var title = document.getElementById('scan-title');
   var sub   = document.getElementById('scan-sub');
-  title.textContent = 'Scan QR Bin';
-  sub.textContent   = 'Arahkan ke QR Code bin tujuan';
+  title.textContent = 'Scan QR Bin Tujuan';
+  sub.textContent   = 'Arahkan ke QR Code bin racking';
+
+  // Tampilkan banner SKU
+  var sku = _trialScannedSku;
+  if (sku) {
+    var hasQt   = !!(sku.quotation);
+    var tipe    = hasQt ? 'EKSPOR' : 'LOKAL';
+    var tipeClr = hasQt ? '#7c3aed' : '#16a34a';
+
+    document.getElementById('scan-banner-kode').textContent  = sku.kode || '';
+    document.getElementById('scan-banner-nama').textContent  = sku.nama || '';
+
+    var tipeEl = document.getElementById('scan-banner-tipe');
+    tipeEl.textContent        = tipe;
+    tipeEl.style.background   = tipeClr;
+    tipeEl.style.color        = '#fff';
+
+    var prodEl = document.getElementById('scan-banner-prodate');
+    prodEl.textContent = sku.prodate ? '📅 ' + sku.prodate.split('-').reverse().join('/') : '';
+
+    var qtEl = document.getElementById('scan-banner-qt');
+    if (hasQt) {
+      qtEl.textContent      = '🔖 ' + sku.quotation;
+      qtEl.style.display    = 'block';
+    } else {
+      qtEl.style.display    = 'none';
+    }
+
+    document.getElementById('scan-sku-banner').style.display = 'block';
+  } else {
+    document.getElementById('scan-sku-banner').style.display = 'none';
+  }
+
+  stopScanner(); // pastikan stream lama benar-benar berhenti
   showScreen('screen-trial-scan');
-  startCamera();
+  setTimeout(function(){ startCamera(); }, 400); // beri jeda setelah screen render
 }
 
 // ═══════════════════════════════════════
@@ -2860,7 +2919,7 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
   document.getElementById('tmasuk-pecahan').value = '0';
   document.getElementById('tmasuk-total').textContent = '0';
 
-  _trialScannedSku = { kode: skuKode, nama: '', std: 0 };
+  _trialScannedSku = { kode: skuKode, nama: '', std: 0, prodate: prodateVal || '', quotation: quotationVal || '' };
 
   // Reset operator chips
   document.getElementById('tmasuk-operator').value = '';
@@ -2903,7 +2962,7 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
 
   showScreen('screen-trial-masuk');
   // Langsung buka kamera untuk scan bin loc
-  setTimeout(function(){ startScanBinForMasuk(); }, 300);
+  setTimeout(function(){ startScanBinForMasuk(); }, 900);
 }
 
 function confirmTrialBin() {
