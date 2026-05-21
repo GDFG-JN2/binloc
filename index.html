@@ -725,6 +725,10 @@ input:focus, select:focus {
         <input type="date" id="tmasuk-prodate"
           style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;">
       </div>
+      <!-- Tombol tambah quotation (muncul kalau LOKAL / tidak ada QT dari QR) -->
+      <div id="tmasuk-qt-toggle" style="display:none;margin-bottom:10px;">
+        <button onclick="showTmasukQtField()" style="width:100%;padding:9px;background:transparent;border:1.5px dashed #7c3aed60;border-radius:8px;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;">＋ Tambah Quotation</button>
+      </div>
       <div id="tmasuk-quotation-wrap" style="display:none;margin-bottom:10px;">
         <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Quotation No. <span style="background:#7c3aed;color:#fff;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;vertical-align:middle;">EKSPOR</span></div>
         <input type="text" id="tmasuk-quotation" placeholder="QT-XXXXX"
@@ -2962,6 +2966,7 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
   // Reset operator chips
   document.getElementById('tmasuk-operator').value = '';
   document.getElementById('tmasuk-keterangan').value = '';
+  document.getElementById('tmasuk-qt-toggle').style.display = 'none';
   document.querySelectorAll('#screen-trial-masuk .op-chip').forEach(function(c) { c.classList.remove('selected'); });
 
   // Prodate: dari QR jika ada, fallback hari ini
@@ -2974,14 +2979,17 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
   }
 
   // Quotation: dari QR jika ada
-  var qtWrap = document.getElementById('tmasuk-quotation-wrap');
-  var qtInput = document.getElementById('tmasuk-quotation');
+  var qtWrap    = document.getElementById('tmasuk-quotation-wrap');
+  var qtInput   = document.getElementById('tmasuk-quotation');
+  var qtToggle  = document.getElementById('tmasuk-qt-toggle');
   if (quotationVal) {
-    qtInput.value = quotationVal;
-    qtWrap.style.display = 'block';
+    qtInput.value         = quotationVal;
+    qtWrap.style.display  = 'block';
+    qtToggle.style.display= 'none';
   } else {
-    qtInput.value = '';
-    qtWrap.style.display = 'none';
+    qtInput.value         = '';
+    qtWrap.style.display  = 'none';
+    qtToggle.style.display= 'block'; // tampilkan tombol toggle
   }
 
   // Lookup SKU nama + STD
@@ -3098,6 +3106,12 @@ function setTrialKAksi(aksi) {
   }
   var title = document.getElementById('tkeluar-title');
   if (title) title.textContent = aksi === 'PINDAH' ? 'Pindah Barang' : 'Keluar Barang';
+}
+
+function showTmasukQtField() {
+  document.getElementById('tmasuk-qt-toggle').style.display  = 'none';
+  document.getElementById('tmasuk-quotation-wrap').style.display = 'block';
+  document.getElementById('tmasuk-quotation').focus();
 }
 
 function pilihTrialMOp(el, nama) {
