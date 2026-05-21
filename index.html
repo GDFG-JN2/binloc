@@ -659,12 +659,18 @@ input:focus, select:focus {
     </div>
 
     <!-- Manual input -->
-    <div style="padding:16px;display:flex;gap:8px;align-items:center;background:var(--surface);border-top:1px solid var(--border);">
-      <input id="scan-manual-input" placeholder="Ketik kode manual (bin/SKU)..."
-        style="flex:1;padding:11px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--mono);"
-        onkeydown="if(event.key==='Enter') processScanResult(this.value.trim())">
-      <button onclick="processScanResult(document.getElementById('scan-manual-input').value.trim())"
-        style="padding:11px 16px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">OK</button>
+    <div style="padding:16px;background:var(--surface);border-top:1px solid var(--border);">
+      <div style="position:relative;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="scan-manual-input" placeholder="Ketik kode atau nama barang / bin..."
+            style="flex:1;padding:11px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--mono);"
+            oninput="scanManualSuggest(this.value)"
+            onkeydown="if(event.key==='Enter'){ scanManualHideSuggest(); processScanResult(this.value.trim()); }">
+          <button onclick="scanManualHideSuggest(); processScanResult(document.getElementById('scan-manual-input').value.trim())"
+            style="padding:11px 16px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">OK</button>
+        </div>
+        <div id="scan-manual-suggest" style="display:none;position:absolute;bottom:100%;left:0;right:48px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 -4px 16px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;margin-bottom:4px;z-index:99;"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -2691,6 +2697,8 @@ function startTrialScan(mode) {
   _trialScannedSku = null;
   _trialScannedBin = null;
   document.getElementById('scan-sku-banner').style.display = 'none';
+  document.getElementById('scan-manual-input').value = '';
+  scanManualHideSuggest();
 
   if (mode === 'opname') {
     startScanForOpname();
@@ -2704,6 +2712,41 @@ function startTrialScan(mode) {
   stopScanner();
   showScreen('screen-trial-scan');
   setTimeout(function(){ startCamera(); }, 400);
+}
+
+function scanManualHideSuggest() {
+  var el = document.getElementById('scan-manual-suggest');
+  if (el) el.style.display = 'none';
+}
+
+function scanManualSuggest(val) {
+  var dd = document.getElementById('scan-manual-suggest');
+  if (!dd) return;
+  val = val.trim();
+  if (!val || val.length < 2) { dd.style.display = 'none'; return; }
+
+  var q = val.toLowerCase();
+  var results = (skuData || []).filter(function(s) {
+    return (s.kode && s.kode.startsWith(val)) ||
+           (s.nama && s.nama.toLowerCase().includes(q));
+  }).slice(0, 8);
+
+  if (!results.length) { dd.style.display = 'none'; return; }
+
+  dd.innerHTML = results.map(function(s) {
+    return '<div onclick="scanManualPick(\'' + s.kode + '\')"'
+      + ' style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);active:background:#f0f0f0;">'
+      + '<span style="color:#2563eb;font-weight:800;font-size:13px;">' + s.kode + '</span>'
+      + '<div style="font-size:11px;color:var(--text);margin-top:1px;">' + escHtml(s.nama) + '</div>'
+      + '</div>';
+  }).join('');
+  dd.style.display = 'block';
+}
+
+function scanManualPick(kode) {
+  document.getElementById('scan-manual-input').value = kode;
+  scanManualHideSuggest();
+  processScanResult(kode);
 }
 
 function scanGoBack() {
