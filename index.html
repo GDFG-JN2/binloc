@@ -3577,7 +3577,7 @@ function opnameSimpanSelisih(kode, nama, idx, prodateAsli, qtAsli, sysTipe, sysP
     pallet: aktualPlt, pecahan: aktualPec, totalKarton: aktualKtn, std: std,
     prodate: aktualProd, quotation: aktualQt, operator: keeper,
     keterangan: 'TIDAK SESUAI | Sistem: ' + sysPlt + 'p/' + sysPec + 'ktn → Aktual: ' + aktualPlt + 'p/' + aktualPec + 'ktn',
-    isSelisih: true, prodateAsli: prodateAsli, sysPlt: sysPlt, sysPec: sysPec
+    isSelisih: true, prodateAsli: prodateAsli, quotationAsli: qtAsli, sysPlt: sysPlt, sysPec: sysPec
   };
   showLoading(true);
   gasCall('saveOpname', payload, function() {
