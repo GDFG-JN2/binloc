@@ -1848,7 +1848,7 @@ function renderSkuResults(list) {
   var res = document.getElementById('sku-results');
   res.innerHTML = list.map(function(m) {
     var extra = (m.pallet !== undefined)
-      ? '<div class="sku-stok">' + m.pallet + ' pallet</div>'
+      ? '<div class="sku-stok">' + pecStr(m, false) + '</div>'
       : '';
     return '<div class="sku-item" onclick="selectSku(\'' + m.kode + '\', \'' + escHtml(m.nama) + '\')">'
       + '<div style="display:flex;justify-content:space-between;align-items:center">'
@@ -2111,7 +2111,10 @@ function pecStr(pd, showTotal) {
   return showTotal ? parts + ' (' + ktn + ')' : parts;
 }
 function pecEff(pd) {
-  return (pd.pallet||0) + ((pd.pecahan||0) > 0 ? 1 : 0);
+  var list = (pd.pecahan_list && pd.pecahan_list.length > 0)
+    ? pd.pecahan_list
+    : ((pd.pecahan||0) > 0 ? [pd.pecahan] : []);
+  return (pd.pallet||0) + list.length; // tiap entry pecahan = 1 palet efektif
 }
 // ────────────────────────────────────────────────────────────────────
 
@@ -2379,7 +2382,7 @@ function petaRenderMap(rawData) {
   rawData.forEach(function(r) {
     var k = r.binLoc;
     if (!binMap[k]) binMap[k] = { used:0, items:[] };
-    binMap[k].used += (r.pallet||0) + ((r.pecahan||0) > 0 ? 1 : 0);
+    binMap[k].used += (r.pallet||0); // efektif = pallet full saja
     binMap[k].items.push(r);
   });
 
@@ -2440,13 +2443,13 @@ function petaShowPopup(bin) {
   var items = [];
   var total = 0;
   (_petaData||[]).forEach(function(r) {
-    if (r.binLoc === bin) { items.push(r); total += (r.pallet||0) + ((r.pecahan||0)>0?1:0); }
+    if (r.binLoc === bin) { items.push(r); total += (r.pallet||0); } // efektif = pallet full saja
   });
   var pct = cap ? Math.round(total/cap*100) : 0;
 
   document.getElementById('petaPopupTitle').textContent = '📦 ' + bin;
   document.getElementById('petaPopupCap').textContent   =
-    cap ? (total + ' / ' + cap + ' plt efektif (' + pct + '%)') : 'Lokasi lain-lain · ' + total + ' plt efektif';
+    cap ? (total + ' / ' + cap + ' plt (' + pct + '%)') : 'Lokasi lain-lain · ' + total + ' plt';
 
   var body = '';
   if (!items.length) {
@@ -2454,7 +2457,7 @@ function petaShowPopup(bin) {
   } else {
     items.sort(function(a,b){ return String(a.prodate).localeCompare(String(b.prodate)); });
     items.forEach(function(r) {
-      var eff    = (r.pallet||0) + ((r.pecahan||0)>0?1:0);
+      var eff    = (r.pallet||0);
       var tc     = r.tipe==='LOKAL' ? '#16a34a' : '#7c3aed';
       var plt    = r.pallet  || 0;
       var pec    = r.pecahan || 0;
@@ -2480,7 +2483,7 @@ function petaShowPopup(bin) {
         + '<div class="peta-pop-prodate">' + escHtml(r.prodate||'') + '</div>'
         + '</div>';
     });
-    body += '<div style="text-align:right;font-size:10px;color:var(--muted);margin-top:8px">* Efektif = pallet + 1 jika ada pecahan</div>';
+    body += '<div style="text-align:right;font-size:10px;color:var(--muted);margin-top:8px">* Jumlah = pallet full · pecahan ditampilkan terpisah</div>';
   }
   document.getElementById('petaPopupBody').innerHTML = body;
   document.getElementById('petaOverlay').classList.add('show');
@@ -3291,7 +3294,7 @@ function renderTrialKeluar(data) {
       + '<span style="font-size:10px;font-weight:700;color:' + tc + ';background:' + tc + '15;border:1px solid ' + tc + '40;border-radius:10px;padding:1px 8px;">' + tipe + '</span>'
       + '</div>'
       + '<div style="color:var(--text);font-size:12px;">' + escHtml(sku.nama) + '</div>'
-      + '<div style="margin-top:2px;font-size:11px;color:#ef4444;font-weight:700;">' + eff + ' plt efektif</div>'
+      + '<div style="margin-top:2px;font-size:11px;color:#ef4444;font-weight:700;">' + pecStr(sku, true) + ' · ' + pecEff(sku) + 'p efektif</div>'
       + '</div>';
   }).join('');
 }
@@ -3382,6 +3385,7 @@ function selectTrialKSku(kode, nama, tipe) {
         chip.dataset.maxPec    = pd.pecahan   || 0;
         chip.dataset.maxKtn    = pd.karton    || 0;
         chip.dataset.quotation = qt;
+        chip.dataset.pecList   = JSON.stringify(pd.pecahan_list || []);
         chip.innerHTML = '<div style="font-weight:700;font-size:12px;">' + (pd.prodate||'-') + '</div>'
           + '<div class="chip-pallet">' + ktnStr + '</div>'
           + (isEksp ? '<div style="font-size:9px;color:#7c3aed;font-weight:700;margin-top:1px;">QT: ' + qt + '</div>' : '');
@@ -3432,8 +3436,10 @@ function selectTrialKProdate(prodate, maxPlt, maxPec, maxKtn, quotation) {
   document.getElementById('tkeluar-max-pec').textContent = '(max ' + maxPec + ')';
 
   // Stok info
-  var eff = maxPlt + (maxPec > 0 ? 1 : 0);
-  document.getElementById('tkeluar-stok-val').textContent = eff + ' plt efektif (' + maxKtn + ' ktn)';
+  var _pecListChip = [];
+  try { _pecListChip = JSON.parse(chip.dataset.pecList || '[]'); } catch(e) {}
+  var _pdChip = { pallet: maxPlt, pecahan: maxPec, pecahan_list: _pecListChip, karton: maxKtn };
+  document.getElementById('tkeluar-stok-val').textContent = pecStr(_pdChip, true) + ' · ' + pecEff(_pdChip) + 'p efektif';
   document.getElementById('tkeluar-std-info').style.display = 'block';
 
   // Reset input
