@@ -1496,7 +1496,11 @@ function resetState() {
   document.getElementById('f-pecahan').value = '';
   document.getElementById('f-total-karton').value = '';
   document.getElementById('f-prodate').value = '';
-  document.getElementById('f-quotation').value = '';
+  var _qtEl = document.getElementById('f-quotation');
+  _qtEl.value = '';
+  _qtEl.readOnly = false;
+  _qtEl.style.background = '';
+  _qtEl.style.cursor = '';
   document.getElementById('f-keterangan').value = '';
   document.getElementById('bin-tujuan-input').value = '';
   document.getElementById('bin-tujuan-custom').value = '';
@@ -1971,11 +1975,16 @@ function showProdateChips(skuKode) {
     prodateInput.value = prodateToDanteInput(pd.prodate);
     state.selectedProdate = pd.prodate;
     state.maxPallet = pd.pallet;
-    state.maxKarton = pd.karton; // patokan validasi
-    if (state.tipe === 'EKSPOR' && pd.quotation) {
-      document.getElementById('f-quotation').value = pd.quotation;
+    state.maxKarton = pd.karton;
+    // Auto-fill dan lock quotation
+    if (state.tipe === 'EKSPOR') {
+      var qtEl = document.getElementById('f-quotation');
+      qtEl.value    = pd.quotation || '';
+      qtEl.readOnly = true;
+      qtEl.style.background = 'var(--surface2)';
+      qtEl.style.cursor     = 'not-allowed';
     }
-    showStokInfo(pd.pallet, pd.karton);
+    showStokInfo(pd.pallet, pd.karton, pd.pecahan_list || []);
     updateSubmitState();
   }
 
@@ -2023,16 +2032,17 @@ function pilihProdateChip(el) {
   if (state.tipe === 'EKSPOR' && quotation) {
     document.getElementById('f-quotation').value = quotation;
   }
-  showStokInfo(pallet, karton);
+  showStokInfo(pallet, karton, pd.pecahan_list || []);
   updateSubmitState();
 }
 
-function showStokInfo(pallet, karton) {
+function showStokInfo(pallet, karton, pecList) {
   var el = document.getElementById('stok-info');
   if (!el) return;
   if (state.aksi !== 'MASUK') {
-    var txt = 'Tersedia: ' + pallet + ' plt';
-    if (karton > 0) txt += ' (' + karton + ' ktn)';
+    var maxPec = (pecList||[]).reduce(function(a,b){return a+b;},0);
+    var _pdSi  = { pallet: pallet, pecahan: maxPec, pecahan_list: pecList||[], karton: karton };
+    var txt    = 'Tersedia: ' + pecStr(_pdSi, true) + ' · ' + pecEff(_pdSi) + 'p efektif';
     el.textContent = txt;
     el.style.display = 'inline';
   } else {
@@ -3373,9 +3383,7 @@ function selectTrialKSku(kode, nama, tipe) {
         var std    = _trialK.std || 0;
         var qt     = String(pd.quotation || '').trim();
         var isEksp = qt && qt !== '0';
-        var ktnStr = std > 0 && pd.pallet > 0
-          ? pecStr(pd, true)
-          : eff + ' plt';
+        var ktnStr = pecStr(pd, true);
 
         var chip = document.createElement('div');
         chip.className = 'prodate-chip';
@@ -3391,10 +3399,12 @@ function selectTrialKSku(kode, nama, tipe) {
           + (isEksp ? '<div style="font-size:9px;color:#7c3aed;font-weight:700;margin-top:1px;">QT: ' + qt + '</div>' : '');
 
         chip.addEventListener('click', function() {
+          var _pl = [];
+          try { _pl = JSON.parse(this.dataset.pecList || '[]'); } catch(e){}
           selectTrialKProdate(
             this.dataset.prodate, +this.dataset.maxPlt,
             +this.dataset.maxPec,  +this.dataset.maxKtn,
-            this.dataset.quotation
+            this.dataset.quotation, _pl
           );
         });
         chipsWrap.appendChild(chip);
@@ -3404,12 +3414,12 @@ function selectTrialKSku(kode, nama, tipe) {
     // Auto-select jika hanya 1 prodate
     if (prodates.length === 1) {
       var pd = prodates[0];
-      selectTrialKProdate(pd.prodate||'-', pd.pallet||0, pd.pecahan||0, pd.karton||0, String(pd.quotation||''));
+      selectTrialKProdate(pd.prodate||'-', pd.pallet||0, pd.pecahan||0, pd.karton||0, String(pd.quotation||''), pd.pecahan_list||[]);
     }
   }, function(){});
 }
 
-function selectTrialKProdate(prodate, maxPlt, maxPec, maxKtn, quotation) {
+function selectTrialKProdate(prodate, maxPlt, maxPec, maxKtn, quotation, pecList) {
   _trialK.prodate    = prodate;
   _trialK.maxPallet  = maxPlt;
   _trialK.maxPecahan = maxPec;
@@ -3436,9 +3446,7 @@ function selectTrialKProdate(prodate, maxPlt, maxPec, maxKtn, quotation) {
   document.getElementById('tkeluar-max-pec').textContent = '(max ' + maxPec + ')';
 
   // Stok info
-  var _pecListChip = [];
-  try { _pecListChip = JSON.parse(chip.dataset.pecList || '[]'); } catch(e) {}
-  var _pdChip = { pallet: maxPlt, pecahan: maxPec, pecahan_list: _pecListChip, karton: maxKtn };
+  var _pdChip = { pallet: maxPlt, pecahan: maxPec, pecahan_list: pecList || [], karton: maxKtn };
   document.getElementById('tkeluar-stok-val').textContent = pecStr(_pdChip, true) + ' · ' + pecEff(_pdChip) + 'p efektif';
   document.getElementById('tkeluar-std-info').style.display = 'block';
 
