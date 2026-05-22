@@ -708,6 +708,13 @@ input:focus, select:focus {
         STD: <span id="tmasuk-std" style="font-weight:700;color:var(--text)">-</span> ktn/plt &nbsp;|&nbsp;
         Tersedia: <span id="tmasuk-tersedia" style="font-weight:700;color:#2563eb">-</span>
       </div>
+      <!-- Input manual STD — muncul kalau STD tidak ditemukan di master -->
+      <div id="tmasuk-std-manual-wrap" style="display:none;margin-bottom:10px;">
+        <div style="font-size:10px;color:#f59e0b;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;">⚠️ STD tidak ditemukan — isi manual</div>
+        <input type="number" min="1" id="tmasuk-std-manual" placeholder="Isi STD ktn/plt..."
+          oninput="onTmasukStdManual(this.value)"
+          style="width:100%;padding:10px;border:1.5px solid #f59e0b80;border-radius:8px;background:#f59e0b08;color:var(--text);font-size:14px;text-align:center;font-weight:700;">
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div>
           <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Pallet Full</div>
@@ -1235,9 +1242,14 @@ input:focus, select:focus {
         <span id="std-info-text"></span>
         <span id="stok-info" style="display:none;margin-left:12px;color:#1d4ed8;font-weight:700"></span>
       </div>
-      <!-- Warning STD tidak ada -->
-      <div id="std-warn" style="display:none;font-size:11px;color:#92400e;margin-bottom:12px;padding:8px 12px;background:#fef3c7;border-radius:8px;border:1px solid #fde68a">
-        ⚠️ STD tidak ditemukan untuk barang ini — Total Karton tidak dihitung
+      <!-- Warning STD tidak ada + input manual -->
+      <div id="std-warn" style="display:none;margin-bottom:12px;">
+        <div style="font-size:11px;color:#92400e;padding:8px 12px;background:#fef3c7;border-radius:8px;border:1px solid #fde68a;margin-bottom:6px;">
+          ⚠️ STD tidak ditemukan — isi manual agar Total Karton terhitung
+        </div>
+        <input type="number" min="1" id="f-std-manual" placeholder="Isi STD ktn/plt..."
+          oninput="onStdManual(this.value)"
+          style="width:100%;padding:10px;border:1.5px solid #f59e0b80;border-radius:8px;background:#f59e0b08;color:var(--text);font-size:14px;text-align:center;font-weight:700;">
       </div>
       <!-- Warning pallet melebihi stok -->
       <div id="pallet-warn" style="display:none;font-size:11px;color:var(--accent2);margin-bottom:12px;padding:8px 12px;background:#ef444415;border-radius:8px;border:1px solid #ef444440">
@@ -1886,14 +1898,25 @@ function loadStdForSku(kode) {
 function showStdInfo() {
   var infoEl = document.getElementById('std-info');
   var warnEl = document.getElementById('std-warn');
+  var manualEl = document.getElementById('f-std-manual');
   if (state.std) {
     document.getElementById('std-info-text').textContent = 'STD: ' + state.std + ' karton/pallet';
     infoEl.style.display = 'block';
     warnEl.style.display = 'none';
+    if (manualEl) manualEl.value = '';
   } else {
     infoEl.style.display = 'none';
     warnEl.style.display = 'block';
+    if (manualEl) manualEl.value = '';
   }
+}
+
+function onStdManual(val) {
+  var std = Number(val) || 0;
+  state.std = std > 0 ? std : null;
+  document.getElementById('std-info-text').textContent = std > 0 ? 'STD: ' + std + ' karton/pallet (manual)' : '';
+  document.getElementById('std-info').style.display = std > 0 ? 'block' : 'none';
+  calcTotal();
 }
 
 function validatePallet() {
@@ -2114,6 +2137,7 @@ function submitForm() {
   var quotation   = document.getElementById('f-quotation').value.trim();
 
   if (!pallet && pecahan === 0) { showToast('⚠️ Isi jumlah pallet atau pecahan'); return; }
+  if (pallet > 0 && !state.std)  { showToast('❌ STD belum diisi — isi STD manual dulu'); return; }
   if (!prodate) { showToast('⚠️ Isi tanggal prodate'); return; }
   if (state.tipe === 'EKSPOR' && !quotation) { showToast('⚠️ Isi nomor quotation'); return; }
 
@@ -3010,6 +3034,8 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
   document.getElementById('tmasuk-operator').value = '';
   document.getElementById('tmasuk-keterangan').value = '';
   document.getElementById('tmasuk-qt-toggle').style.display = 'none';
+  document.getElementById('tmasuk-std-manual-wrap').style.display = 'none';
+  document.getElementById('tmasuk-std-manual').value = '';
   document.querySelectorAll('#screen-trial-masuk .op-chip').forEach(function(c) { c.classList.remove('selected'); });
 
   // Prodate: dari QR jika ada, fallback hari ini
@@ -3038,8 +3064,21 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
   // Lookup SKU nama + STD
   gasCall('getStdBySku', skuKode, function(std) {
     _trialScannedSku.std = Number(std) || 0;
-    document.getElementById('tmasuk-std').textContent = _trialScannedSku.std || '-';
-  }, function(){});
+    var stdWrap = document.getElementById('tmasuk-std-manual-wrap');
+    if (_trialScannedSku.std > 0) {
+      document.getElementById('tmasuk-std').textContent = _trialScannedSku.std;
+      if (stdWrap) stdWrap.style.display = 'none';
+    } else {
+      document.getElementById('tmasuk-std').textContent = '?';
+      if (stdWrap) stdWrap.style.display = 'block';
+      document.getElementById('tmasuk-std-manual').value = '';
+    }
+    calcTrialTotal();
+  }, function(){
+    document.getElementById('tmasuk-std').textContent = '?';
+    var stdWrap = document.getElementById('tmasuk-std-manual-wrap');
+    if (stdWrap) stdWrap.style.display = 'block';
+  });
 
   // Lookup nama dari skuData
   var found = (skuData || []).filter(function(s){ return s.kode === skuKode; });
@@ -3095,6 +3134,7 @@ function submitTrialMasuk() {
   if (!bin)            { showToast('❌ Bin Loc belum diisi'); return; }
   if (plt + pec === 0) { showToast('❌ Jumlah pallet/pecahan 0'); return; }
   if (!prodate)        { showToast('❌ Prodate belum diisi'); return; }
+  if (plt > 0 && std === 0) { showToast('❌ STD belum terbaca — cek master SKU'); return; }
 
   var payload = {
     aksi: 'MASUK', tipe: tipe,
@@ -3149,6 +3189,13 @@ function setTrialKAksi(aksi) {
   }
   var title = document.getElementById('tkeluar-title');
   if (title) title.textContent = aksi === 'PINDAH' ? 'Pindah Barang' : 'Keluar Barang';
+}
+
+function onTmasukStdManual(val) {
+  var std = Number(val) || 0;
+  if (_trialScannedSku) _trialScannedSku.std = std;
+  document.getElementById('tmasuk-std').textContent = std > 0 ? std : '?';
+  calcTrialTotal();
 }
 
 function showTmasukQtField() {
