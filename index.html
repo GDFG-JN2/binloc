@@ -2392,7 +2392,8 @@ function petaRenderMap(rawData) {
   rawData.forEach(function(r) {
     var k = r.binLoc;
     if (!binMap[k]) binMap[k] = { used:0, items:[] };
-    binMap[k].used += (r.pallet||0); // efektif = pallet full saja
+    var _pecRL = (r.pecahan_list && r.pecahan_list.length>0) ? r.pecahan_list : ((r.pecahan||0)>0 ? [r.pecahan] : []);
+    binMap[k].used += (r.pallet||0) + _pecRL.length;
     binMap[k].items.push(r);
   });
 
@@ -2453,7 +2454,7 @@ function petaShowPopup(bin) {
   var items = [];
   var total = 0;
   (_petaData||[]).forEach(function(r) {
-    if (r.binLoc === bin) { items.push(r); total += (r.pallet||0); } // efektif = pallet full saja
+    if (r.binLoc === bin) { items.push(r); total += pecEff(r); }
   });
   var pct = cap ? Math.round(total/cap*100) : 0;
 
@@ -2467,7 +2468,7 @@ function petaShowPopup(bin) {
   } else {
     items.sort(function(a,b){ return String(a.prodate).localeCompare(String(b.prodate)); });
     items.forEach(function(r) {
-      var eff    = (r.pallet||0);
+      var eff    = pecEff(r);
       var tc     = r.tipe==='LOKAL' ? '#16a34a' : '#7c3aed';
       var plt    = r.pallet  || 0;
       var pec    = r.pecahan || 0;
