@@ -1611,7 +1611,7 @@ function renderLainlainList(rawData) {
       var k = r.binLoc;
       if (!locMap[k]) locMap[k] = { items:[], pallet:0 };
       locMap[k].items.push(r);
-      locMap[k].pallet += (r.pallet||0);
+      locMap[k].pallet += pecEff(r);
     }
   });
 
