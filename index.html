@@ -432,6 +432,23 @@ input:focus, select:focus {
 }
 .search-tipe-btn.active { border-color: #2563eb; background: #2563eb15; color: #2563eb; font-weight:700; }
 .search-tipe-btn.peta-active { border-color: #3b82f6; background: #3b82f620; color: #3b82f6; }
+.search-tipe-btn.usang-active { border-color: #f59e0b; background: #f59e0b20; color: #d97706; font-weight:700; }
+/* ── USANG PANE ── */
+#usang-pane { display:none; padding-bottom:80px; }
+.usang-filter-btn {
+  padding:6px 14px; border-radius:20px; border:1px solid var(--border);
+  background:var(--surface2); font-size:12px; cursor:pointer; color:var(--muted);
+  transition:all .15s; white-space:nowrap; flex-shrink:0; font-family:var(--mono);
+}
+.usang-filter-btn.active { border-color:#f59e0b; background:#f59e0b20; color:#d97706; font-weight:700; }
+.usang-bin-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  padding:12px 14px; margin-bottom:8px; transition:border-color .15s;
+}
+.usang-tier-header {
+  font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.5px;
+  padding:6px 0 8px; margin-top:4px;
+}
 
 /* ── PETA SEBARAN PWA ── */
 #peta-pane{ display:none; padding:0 0 80px; }
@@ -1006,6 +1023,7 @@ input:focus, select:focus {
         <div class="search-tipe-btn"        id="stipe-EKSPOR"  onclick="setSearchTipe('EKSPOR')" style="flex-shrink:0">Ekspor</div>
         <div class="search-tipe-btn"        id="stipe-PETA"    onclick="setSearchTipe('PETA')"   style="flex-shrink:0">🗺️ Peta</div>
         <div class="search-tipe-btn"        id="stipe-RIWAYAT" onclick="setSearchTipe('RIWAYAT')" style="flex-shrink:0">📋 Riwayat</div>
+        <div class="search-tipe-btn"        id="stipe-USANG"   onclick="setSearchTipe('USANG')"   style="flex-shrink:0">⏰ Usang</div>
       </div>
       </div>
     </div>
@@ -1102,6 +1120,28 @@ input:focus, select:focus {
       </div>
       <div id="rw-info" style="font-size:11px;color:var(--muted);margin-bottom:8px;"></div>
       <div id="rw-results"></div>
+    </div>
+
+    <!-- Usang Pane -->
+    <div id="usang-pane">
+      <!-- Filter pills -->
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-bottom:12px;">
+        <div class="usang-filter-btn active" id="uf-SEMUA"  onclick="setUsangFilter('SEMUA')">Semua</div>
+        <div class="usang-filter-btn"        id="uf-1"      onclick="setUsangFilter('1')"   >&gt;1 hari</div>
+        <div class="usang-filter-btn"        id="uf-7"      onclick="setUsangFilter('7')"   >&gt;7 hari</div>
+        <div class="usang-filter-btn"        id="uf-30"     onclick="setUsangFilter('30')"  >&gt;30 hari</div>
+        <div class="usang-filter-btn"        id="uf-LOKAL"  onclick="setUsangFilter('LOKAL')" >Lokal</div>
+        <div class="usang-filter-btn"        id="uf-EKSPOR" onclick="setUsangFilter('EKSPOR')">Ekspor</div>
+      </div>
+      <!-- Summary bar -->
+      <div id="usang-summary" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11px;display:flex;gap:14px;flex-wrap:wrap;"></div>
+      <!-- List -->
+      <div id="usang-results">
+        <div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;">
+          <div style="font-size:32px;margin-bottom:10px;">⏰</div>
+          Pilih filter atau tunggu data dimuat
+        </div>
+      </div>
     </div>
 
     <!-- Peta Sebaran -->
@@ -2297,19 +2337,18 @@ var searchTipe = 'SEMUA';
 function setSearchTipe(tipe) {
   searchTipe = tipe;
   document.querySelectorAll('.search-tipe-btn').forEach(function(b) {
-    b.classList.remove('active','peta-active');
+    b.classList.remove('active','peta-active','usang-active');
   });
   var btn = document.getElementById('stipe-' + tipe);
-  if (tipe === 'PETA') {
-    btn.classList.add('peta-active');
-  } else {
-    btn.classList.add('active');
-  }
+  if (tipe === 'PETA')        btn.classList.add('peta-active');
+  else if (tipe === 'USANG')  btn.classList.add('usang-active');
+  else                        btn.classList.add('active');
 
-  // Toggle search fields vs peta pane vs riwayat pane
+  // Toggle search fields vs peta pane vs riwayat pane vs usang pane
   var isPeta     = tipe === 'PETA';
   var isRiwayat  = tipe === 'RIWAYAT';
-  var isSearch   = !isPeta && !isRiwayat;
+  var isUsang    = tipe === 'USANG';
+  var isSearch   = !isPeta && !isRiwayat && !isUsang;
 
   document.querySelector('.form-section:nth-child(2)') && (
     document.querySelectorAll('#screen-search .form-section')[1].style.display = isSearch ? '' : 'none'
@@ -2319,12 +2358,14 @@ function setSearchTipe(tipe) {
   document.getElementById('search-empty').style.display        = 'none';
   document.getElementById('peta-pane').style.display           = isPeta    ? 'block' : 'none';
   document.getElementById('riwayat-pane').style.display        = isRiwayat ? 'block' : 'none';
+  document.getElementById('usang-pane').style.display          = isUsang   ? 'block' : 'none';
   document.getElementById('wrap-search-quotation').style.display =
     (isSearch && (tipe === 'EKSPOR' || tipe === 'SEMUA')) ? 'block' : 'none';
 
   clearSearchResults();
   if (isPeta)    petaLoadMap();
   if (isRiwayat) { initRiwayat(); loadRiwayat(); }
+  if (isUsang)   loadUsang();
 }
 
 // ══ PETA SEBARAN ══
@@ -2336,7 +2377,7 @@ var PETA_CAP_CFG = [
   {l:'D',f:1, t:25,c:24},{l:'E',f:1, t:25,c:18},{l:'F',f:1, t:25,c:24},
   {l:'G',f:1, t:25,c:30},{l:'G',f:26,t:32,c:24},
   {l:'H',f:1, t:35,c:36},
-  {l:'I',f:1, t:16,c:12},{l:'I',f:17,t:27,c:24},{l:'I',f:18,t:31,c:36},{l:'I',f:32,t:43,c:24}
+  {l:'I',f:1, t:17,c:12},{l:'I',f:18,t:31,c:18},{l:'I',f:32,t:43,c:24}
 ];
 var PETA_MAP_ROWS = [
   {rows:[{l:'A',max:28}]}, null,
@@ -2784,6 +2825,176 @@ function renderRiwayat(data) {
       + (r.keterangan ? '<div style="font-size:10px;color:var(--muted);margin-top:4px;font-style:italic;">'+r.keterangan+'</div>' : '')
       + '</div>';
   }).join('');
+}
+
+// ═══════════════════════════════════════
+// USANG — Bin paling lama tidak diupdate
+// ═══════════════════════════════════════
+var _usangData    = null;  // raw dari getBinCurrent
+var _usangLoaded  = false;
+var _usangFilter  = 'SEMUA'; // 'SEMUA'|'1'|'7'|'30'|'LOKAL'|'EKSPOR'
+
+function _parseLastUpdate(str) {
+  if (!str) return null;
+  var mo = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  var m = str.match(/(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return null;
+  var idx = mo[m[2].toLowerCase()];
+  if (idx === undefined) return null;
+  return new Date(parseInt(m[3]), idx, parseInt(m[1]), parseInt(m[4]), parseInt(m[5]), parseInt(m[6]));
+}
+
+function _staleDays(dateObj) {
+  if (!dateObj) return null;
+  var diff = Date.now() - dateObj.getTime();
+  return Math.floor(diff / 86400000);
+}
+
+function _staleTier(days) {
+  if (days === null) return 'unknown';
+  if (days > 30) return 'kritis';
+  if (days >= 7) return 'lama';
+  if (days >= 1) return 'cek';
+  return 'fresh';
+}
+
+function loadUsang() {
+  if (_usangLoaded && _usangData) { renderUsang(_usangData); return; }
+  document.getElementById('usang-results').innerHTML =
+    '<div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;"><div style="font-size:28px;margin-bottom:8px">⏳</div>Memuat data...</div>';
+  gasCall('getBinCurrent', {}, function(data) {
+    _usangData   = data || [];
+    _usangLoaded = true;
+    renderUsang(_usangData);
+  }, function() {
+    document.getElementById('usang-results').innerHTML =
+      '<div style="text-align:center;padding:40px;color:#ef4444;font-size:12px;">❌ Gagal memuat data</div>';
+  });
+}
+
+function setUsangFilter(f) {
+  _usangFilter = f;
+  document.querySelectorAll('.usang-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  var btn = document.getElementById('uf-' + f);
+  if (btn) btn.classList.add('active');
+  if (_usangLoaded && _usangData) renderUsang(_usangData);
+  else loadUsang();
+}
+
+function renderUsang(rawData) {
+  // ── Agregasi per bin: ambil lastUpdate TERBARU per bin ──
+  var binMap = {};
+  rawData.forEach(function(r) {
+    var k   = r.binLoc;
+    var dt  = _parseLastUpdate(r.lastUpdate);
+    if (!binMap[k]) {
+      binMap[k] = { bin:k, latestDate:dt, latestStr:r.lastUpdate||'', operator:'', skuList:[], totalEff:0, tipes:{} };
+    }
+    // Simpan lastUpdate terbaru untuk bin ini
+    if (dt && (!binMap[k].latestDate || dt > binMap[k].latestDate)) {
+      binMap[k].latestDate = dt;
+      binMap[k].latestStr  = r.lastUpdate || '';
+      binMap[k].operator   = r.operator   || '';
+    }
+    binMap[k].skuList.push({ kode:r.skuKode, nama:r.skuNama, eff:pecEff(r), tipe:r.tipe, prodate:r.prodate });
+    binMap[k].totalEff += pecEff(r);
+    binMap[k].tipes[r.tipe || 'LOKAL'] = true;
+  });
+
+  // Konversi ke array, hitung days
+  var bins = Object.keys(binMap).map(function(k) {
+    var b    = binMap[k];
+    b.days   = _staleDays(b.latestDate);
+    b.tier   = _staleTier(b.days);
+    return b;
+  });
+
+  // ── Apply filter ──
+  var filtered = bins.filter(function(b) {
+    if (_usangFilter === 'LOKAL')  return b.tipes['LOKAL'];
+    if (_usangFilter === 'EKSPOR') return b.tipes['EKSPOR'];
+    var minDays = parseInt(_usangFilter, 10);
+    if (!isNaN(minDays)) return b.days === null || b.days >= minDays;
+    return true; // SEMUA
+  });
+
+  // Sort: null days (unknown) di atas, lalu ascending by days (terlama duluan)
+  filtered.sort(function(a, b) {
+    var da = a.days === null ? 9999 : a.days;
+    var db = b.days === null ? 9999 : b.days;
+    return db - da; // terlama di atas
+  });
+
+  // ── Summary bar ──
+  var counts = { kritis:0, lama:0, cek:0, fresh:0, unknown:0 };
+  bins.forEach(function(b) { counts[b.tier]++; });
+  var sumEl = document.getElementById('usang-summary');
+  sumEl.style.display = 'flex';
+  sumEl.innerHTML =
+    '<span style="color:var(--muted);font-weight:700;">Total: <b style="color:var(--text)">' + bins.length + '</b> bin</span>'
+    + '<span style="color:#dc2626">🔴 ' + counts.kritis + '</span>'
+    + '<span style="color:#ea580c">🟠 ' + counts.lama   + '</span>'
+    + '<span style="color:#d97706">🟡 ' + counts.cek    + '</span>'
+    + '<span style="color:#16a34a">🟢 ' + counts.fresh  + '</span>'
+    + (counts.unknown ? '<span style="color:var(--muted)">⚪ ' + counts.unknown + '</span>' : '');
+
+  if (!filtered.length) {
+    document.getElementById('usang-results').innerHTML =
+      '<div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;"><div style="font-size:32px;margin-bottom:10px;">✅</div>Tidak ada bin yang sesuai filter</div>';
+    return;
+  }
+
+  // ── Tier config ──
+  var TIERS = [
+    { id:'kritis', label:'🔴 Kritis — tidak update > 30 hari', color:'#dc2626', bg:'#fef2f2', border:'#fecaca' },
+    { id:'lama',   label:'🟠 Lama — 7–30 hari',               color:'#ea580c', bg:'#fff7ed', border:'#fed7aa' },
+    { id:'cek',    label:'🟡 Perlu dicek — 1–7 hari',          color:'#d97706', bg:'#fffbeb', border:'#fde68a' },
+    { id:'fresh',  label:'🟢 Terbaru — hari ini',              color:'#16a34a', bg:'#f0fdf4', border:'#bbf7d0' },
+    { id:'unknown',label:'⚪ Tidak ada data update',           color:'#6b7280', bg:'var(--surface2)', border:'var(--border)' }
+  ];
+
+  var html = '';
+  TIERS.forEach(function(tier) {
+    var group = filtered.filter(function(b) { return b.tier === tier.id; });
+    if (!group.length) return;
+
+    html += '<div class="usang-tier-header" style="color:' + tier.color + '">' + tier.label + ' (' + group.length + ')</div>';
+
+    group.forEach(function(b) {
+      var daysLabel = b.days === null ? '—' : (b.days === 0 ? 'Hari ini' : b.days + ' hari lalu');
+      var opLabel   = b.operator ? ' · 👤 ' + b.operator : '';
+      // Ringkasan SKU: max 2, sisanya "+N lagi"
+      var skuNames  = b.skuList.slice(0,2).map(function(s){ return s.nama || s.kode; }).join(', ')
+                    + (b.skuList.length > 2 ? ' +' + (b.skuList.length - 2) + ' SKU' : '');
+      // Tipe badges
+      var tipeBadge = Object.keys(b.tipes).map(function(t) {
+        var c = t === 'LOKAL' ? '#16a34a' : '#7c3aed';
+        var bg = t === 'LOKAL' ? '#16a34a15' : '#7c3aed15';
+        return '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:'+bg+';color:'+c+';border:1px solid '+c+'40;font-weight:700;">'+t+'</span>';
+      }).join(' ');
+
+      html += '<div class="usang-bin-card" style="border-color:' + tier.border + ';background:' + tier.bg + ';">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+          + '<div style="font-family:var(--sans);font-size:20px;font-weight:800;color:' + tier.color + ';">' + escHtml(b.bin) + '</div>'
+          + '<div style="text-align:right;">'
+            + '<div style="font-size:12px;font-weight:700;color:' + tier.color + ';">' + daysLabel + '</div>'
+            + '<div style="font-size:10px;color:var(--muted);">' + (b.latestStr ? b.latestStr.split(' ')[0] : '—') + opLabel + '</div>'
+          + '</div>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+          + '<span style="font-size:11px;color:var(--muted);">' + escHtml(skuNames) + '</span>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;">'
+          + tipeBadge
+          + '<span style="font-size:10px;color:#2563eb;background:#2563eb15;border:1px solid #2563eb30;padding:1px 7px;border-radius:4px;font-weight:700;">'
+            + b.totalEff + ' plt efektif</span>'
+          + '<span style="font-size:10px;color:var(--muted);">' + b.skuList.length + ' SKU</span>'
+        + '</div>'
+        + '</div>';
+    });
+  });
+
+  document.getElementById('usang-results').innerHTML = html;
 }
 
 // ═══════════════════════════════════════
