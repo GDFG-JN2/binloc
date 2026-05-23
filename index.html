@@ -457,6 +457,7 @@ input:focus, select:focus {
 .peta-yellow { background:#fef08a; color:#854d0e; border-color:#fde047; }
 .peta-orange { background:#fed7aa; color:#9a3412; border-color:#fdba74; }
 .peta-red    { background:#fecaca; color:#991b1b; border-color:#fca5a5; }
+.peta-brown  { background:#78350f; color:#fef3c7; border-color:#92400e; }
 /* popup peta */
 #petaOverlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9500; align-items:flex-end; justify-content:center; }
 #petaOverlay.show{ display:flex; }
@@ -1111,8 +1112,12 @@ input:focus, select:focus {
         <div class="peta-legend-item"><div class="peta-legend-dot peta-green"></div>&lt;50%</div>
         <div class="peta-legend-item"><div class="peta-legend-dot peta-yellow"></div>50–75%</div>
         <div class="peta-legend-item"><div class="peta-legend-dot peta-orange"></div>75–99%</div>
-        <div class="peta-legend-item"><div class="peta-legend-dot peta-red"></div>≥100%</div>
-        <button onclick="petaRefresh()" id="peta-refresh-btn" style="margin-left:auto;padding:5px 12px;border:1px solid #3b82f640;border-radius:8px;background:#3b82f615;color:#3b82f6;font-size:10px;font-weight:700;cursor:pointer">🔄 Refresh</button>
+        <div class="peta-legend-item"><div class="peta-legend-dot peta-red"></div>100–110%</div>
+        <div class="peta-legend-item"><div class="peta-legend-dot peta-brown"></div>&gt;110%</div>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button onclick="openCapEditor()" style="padding:5px 12px;border:1px solid #f59e0b40;border-radius:8px;background:#f59e0b15;color:#b45309;font-size:10px;font-weight:700;cursor:pointer;">⚙️ Kapasitas</button>
+          <button onclick="petaRefresh()" id="peta-refresh-btn" style="padding:5px 12px;border:1px solid #3b82f640;border-radius:8px;background:#3b82f615;color:#3b82f6;font-size:10px;font-weight:700;cursor:pointer">🔄 Refresh</button>
+        </div>
       </div>
       <div class="peta-scroll-wrap">
         <div id="peta-map-wrap" class="peta-map-wrap">
@@ -2360,7 +2365,66 @@ function petaColorClass(used, cap) {
   if (p < 50)  return 'peta-green';
   if (p < 75)  return 'peta-yellow';
   if (p < 100) return 'peta-orange';
-  return 'peta-red';
+  if (p <= 110) return 'peta-red';
+  return 'peta-brown';
+}
+
+function openCapEditor() {
+  var body = document.getElementById('cap-editor-body');
+  // Group by row letter
+  var groups = {};
+  PETA_CAP_CFG.forEach(function(c) {
+    if (!groups[c.l]) groups[c.l] = [];
+    groups[c.l].push(c);
+  });
+  var html = '';
+  Object.keys(groups).sort().forEach(function(L) {
+    html += '<div style="margin-bottom:14px;">'
+      + '<div style="font-size:11px;font-weight:800;color:#2563eb;margin-bottom:6px;">ROW ' + L + '</div>';
+    groups[L].forEach(function(c, i) {
+      var id = 'cap-' + L + '-' + i;
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px;background:var(--surface2);border-radius:8px;padding:8px;">'
+        + '<div style="font-size:11px;color:var(--muted);">Bin ' + L + c.f + (c.f===c.t?'':' – '+L+c.t) + '</div>'
+        + '<div><div style="font-size:9px;color:var(--muted);margin-bottom:2px;">Dari–Sampai</div>'
+        + '<div style="display:flex;gap:4px;">'
+        + '<input type="number" id="' + id + '-f" value="' + c.f + '" min="1" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;text-align:center;">'
+        + '<input type="number" id="' + id + '-t" value="' + c.t + '" min="1" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;text-align:center;">'
+        + '</div></div>'
+        + '<div><div style="font-size:9px;color:var(--muted);margin-bottom:2px;">Kapasitas (plt)</div>'
+        + '<input type="number" id="' + id + '-c" value="' + c.c + '" min="1" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;text-align:center;font-weight:700;">'
+        + '</div></div>';
+    });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+  document.getElementById('cap-editor-overlay').style.display = 'block';
+}
+
+function closeCapEditor() {
+  document.getElementById('cap-editor-overlay').style.display = 'none';
+}
+
+function saveCapEditor() {
+  var groups = {};
+  PETA_CAP_CFG.forEach(function(c) {
+    if (!groups[c.l]) groups[c.l] = [];
+    groups[c.l].push(c);
+  });
+  var idx = 0;
+  var newCfg = [];
+  Object.keys(groups).sort().forEach(function(L) {
+    groups[L].forEach(function(c, i) {
+      var id  = 'cap-' + L + '-' + i;
+      var f   = parseInt(document.getElementById(id + '-f').value) || c.f;
+      var t   = parseInt(document.getElementById(id + '-t').value) || c.t;
+      var cap = parseInt(document.getElementById(id + '-c').value) || c.c;
+      newCfg.push({ l: L, f: f, t: t, c: cap });
+    });
+  });
+  PETA_CAP_CFG = newCfg;
+  closeCapEditor();
+  petaRefresh();
+  showToast('✅ Kapasitas disimpan');
 }
 
 function petaRefresh() {
@@ -3800,5 +3864,23 @@ if ('serviceWorker' in navigator) {
 }
 
 </script>
+
+<!-- Modal Edit Kapasitas -->
+<div id="cap-editor-overlay" onclick="if(event.target===this)closeCapEditor()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;backdrop-filter:blur(4px);overflow-y:auto;padding:20px;">
+  <div style="max-width:420px;margin:auto;background:var(--surface);border-radius:16px;overflow:hidden;">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-weight:800;font-size:15px;">⚙️ Edit Kapasitas Bin</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">Kapasitas pallet per bin lokasi</div>
+      </div>
+      <button onclick="closeCapEditor()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);">✕</button>
+    </div>
+    <div id="cap-editor-body" style="padding:16px 20px;max-height:60vh;overflow-y:auto;"></div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;">
+      <button onclick="closeCapEditor()" style="flex:1;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-weight:700;color:var(--muted);cursor:pointer;">Batal</button>
+      <button onclick="saveCapEditor()" style="flex:2;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;">💾 Simpan</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
