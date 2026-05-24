@@ -2896,6 +2896,8 @@ function renderUsang(rawData) {
       binMap[k].latestStr  = r.lastUpdate || '';
       binMap[k].operator   = r.operator   || '';
     }
+    // Fallback: isi operator dari baris manapun kalau yang terpilih kosong
+    if (!binMap[k].operator && r.operator) binMap[k].operator = r.operator;
     binMap[k].skuList.push({ kode:r.skuKode, nama:r.skuNama, eff:pecEff(r), tipe:r.tipe, prodate:r.prodate });
     binMap[k].totalEff += pecEff(r);
     binMap[k].tipes[r.tipe || 'LOKAL'] = true;
