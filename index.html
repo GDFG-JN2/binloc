@@ -1124,6 +1124,11 @@ input:focus, select:focus {
 
     <!-- Usang Pane -->
     <div id="usang-pane">
+      <!-- Toggle By Bin / By Barang -->
+      <div style="display:flex;gap:6px;margin-bottom:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px;">
+        <div id="usang-mode-bin"    onclick="setUsangMode('bin')"    style="flex:1;text-align:center;padding:7px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;transition:all .15s;">📦 By Bin</div>
+        <div id="usang-mode-barang" onclick="setUsangMode('barang')" style="flex:1;text-align:center;padding:7px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);transition:all .15s;">🏷️ By Barang</div>
+      </div>
       <!-- Filter pills -->
       <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-bottom:12px;">
         <div class="usang-filter-btn active" id="uf-SEMUA"  onclick="setUsangFilter('SEMUA')">Semua</div>
@@ -2830,9 +2835,25 @@ function renderRiwayat(data) {
 // ═══════════════════════════════════════
 // USANG — Bin paling lama tidak diupdate
 // ═══════════════════════════════════════
-var _usangData    = null;  // raw dari getBinCurrent
+var _usangData    = null;
 var _usangLoaded  = false;
-var _usangFilter  = 'SEMUA'; // 'SEMUA'|'1'|'7'|'30'|'LOKAL'|'EKSPOR'
+var _usangFilter  = 'SEMUA';
+var _usangMode    = 'bin'; // 'bin' | 'barang'
+
+function setUsangMode(mode) {
+  _usangMode = mode;
+  var binBtn    = document.getElementById('usang-mode-bin');
+  var barangBtn = document.getElementById('usang-mode-barang');
+  if (mode === 'bin') {
+    binBtn.style.background    = 'var(--accent)'; binBtn.style.color    = '#fff';
+    barangBtn.style.background = 'transparent';   barangBtn.style.color = 'var(--muted)';
+  } else {
+    barangBtn.style.background = 'var(--accent)'; barangBtn.style.color = '#fff';
+    binBtn.style.background    = 'transparent';   binBtn.style.color    = 'var(--muted)';
+  }
+  if (_usangLoaded && _usangData) renderUsang(_usangData);
+  else loadUsang();
+}
 
 function _parseLastUpdate(str) {
   if (!str) return null;
@@ -2882,7 +2903,10 @@ function setUsangFilter(f) {
 }
 
 function renderUsang(rawData) {
-  // ── Agregasi per bin: ambil lastUpdate TERBARU per bin ──
+  if (_usangMode === 'barang') { renderUsangBarang(rawData); return; }
+
+  // ── BY BIN ──
+  // Agregasi per bin: ambil lastUpdate TERBARU per bin
   var binMap = {};
   rawData.forEach(function(r) {
     var k   = r.binLoc;
@@ -2991,6 +3015,123 @@ function renderUsang(rawData) {
           + '<span style="font-size:10px;color:#2563eb;background:#2563eb15;border:1px solid #2563eb30;padding:1px 7px;border-radius:4px;font-weight:700;">'
             + b.totalEff + ' plt efektif</span>'
           + '<span style="font-size:10px;color:var(--muted);">' + b.skuList.length + ' SKU</span>'
+        + '</div>'
+        + '</div>';
+    });
+  });
+
+  document.getElementById('usang-results').innerHTML = html;
+}
+
+// ── USANG BY BARANG ──
+function renderUsangBarang(rawData) {
+  // Agregasi per SKU: lastUpdate terbaru dari semua bin yang punya SKU itu
+  var skuMap = {};
+  rawData.forEach(function(r) {
+    var k  = r.skuKode;
+    var dt = _parseLastUpdate(r.lastUpdate);
+    if (!skuMap[k]) {
+      skuMap[k] = { kode:k, nama:r.skuNama||k, latestDate:dt, latestStr:r.lastUpdate||'',
+                    operator:'', totalEff:0, bins:[], tipes:{} };
+    }
+    if (dt && (!skuMap[k].latestDate || dt > skuMap[k].latestDate)) {
+      skuMap[k].latestDate = dt;
+      skuMap[k].latestStr  = r.lastUpdate || '';
+      skuMap[k].operator   = r.operator   || '';
+    }
+    if (!skuMap[k].operator && r.operator) skuMap[k].operator = r.operator;
+    skuMap[k].totalEff += pecEff(r);
+    skuMap[k].tipes[r.tipe || 'LOKAL'] = true;
+    // Track bins list (unique)
+    var binEntry = skuMap[k].bins.find(function(b){ return b.bin === r.binLoc; });
+    if (binEntry) { binEntry.eff += pecEff(r); }
+    else skuMap[k].bins.push({ bin: r.binLoc, eff: pecEff(r) });
+  });
+
+  var items = Object.keys(skuMap).map(function(k) {
+    var s    = skuMap[k];
+    s.days   = _staleDays(s.latestDate);
+    s.tier   = _staleTier(s.days);
+    return s;
+  });
+
+  // Apply filter
+  var filtered = items.filter(function(s) {
+    if (_usangFilter === 'LOKAL')  return s.tipes['LOKAL'];
+    if (_usangFilter === 'EKSPOR') return s.tipes['EKSPOR'];
+    var minDays = parseInt(_usangFilter, 10);
+    if (!isNaN(minDays)) return s.days === null || s.days >= minDays;
+    return true;
+  });
+
+  filtered.sort(function(a, b) {
+    var da = a.days === null ? 9999 : a.days;
+    var db = b.days === null ? 9999 : b.days;
+    return db - da;
+  });
+
+  // Summary bar
+  var counts = { kritis:0, lama:0, cek:0, fresh:0, unknown:0 };
+  items.forEach(function(s) { counts[s.tier]++; });
+  var sumEl = document.getElementById('usang-summary');
+  sumEl.style.display = 'flex';
+  sumEl.innerHTML =
+    '<span style="color:var(--muted);font-weight:700;">Total: <b style="color:var(--text)">' + items.length + '</b> SKU</span>'
+    + '<span style="color:#dc2626">🔴 ' + counts.kritis + '</span>'
+    + '<span style="color:#ea580c">🟠 ' + counts.lama   + '</span>'
+    + '<span style="color:#d97706">🟡 ' + counts.cek    + '</span>'
+    + '<span style="color:#16a34a">🟢 ' + counts.fresh  + '</span>'
+    + (counts.unknown ? '<span style="color:var(--muted)">⚪ ' + counts.unknown + '</span>' : '');
+
+  if (!filtered.length) {
+    document.getElementById('usang-results').innerHTML =
+      '<div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;"><div style="font-size:32px;margin-bottom:10px;">✅</div>Tidak ada barang yang sesuai filter</div>';
+    return;
+  }
+
+  var TIERS = [
+    { id:'kritis', label:'🔴 Kritis — tidak update > 30 hari', color:'#dc2626', bg:'#fef2f2', border:'#fecaca' },
+    { id:'lama',   label:'🟠 Lama — 7–30 hari',               color:'#ea580c', bg:'#fff7ed', border:'#fed7aa' },
+    { id:'cek',    label:'🟡 Perlu dicek — 1–7 hari',          color:'#d97706', bg:'#fffbeb', border:'#fde68a' },
+    { id:'fresh',  label:'🟢 Terbaru — hari ini',              color:'#16a34a', bg:'#f0fdf4', border:'#bbf7d0' },
+    { id:'unknown',label:'⚪ Tidak ada data update',           color:'#6b7280', bg:'var(--surface2)', border:'var(--border)' }
+  ];
+
+  var html = '';
+  TIERS.forEach(function(tier) {
+    var group = filtered.filter(function(s) { return s.tier === tier.id; });
+    if (!group.length) return;
+    html += '<div class="usang-tier-header" style="color:' + tier.color + '">' + tier.label + ' (' + group.length + ')</div>';
+
+    group.forEach(function(s) {
+      var daysLabel = s.days === null ? '—' : (s.days === 0 ? 'Hari ini' : s.days + ' hari lalu');
+      var opLabel   = s.operator ? ' · 👤 ' + s.operator : '';
+      // Bins list: max 3, sisanya "+N bin"
+      var binStr = s.bins.slice(0,3).map(function(b){ return b.bin + '(' + b.eff + 'p)'; }).join(', ')
+                 + (s.bins.length > 3 ? ' +' + (s.bins.length-3) + ' bin' : '');
+      var tipeBadge = Object.keys(s.tipes).map(function(t) {
+        var c  = t === 'LOKAL' ? '#16a34a' : '#7c3aed';
+        var bg = t === 'LOKAL' ? '#16a34a15' : '#7c3aed15';
+        return '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:'+bg+';color:'+c+';border:1px solid '+c+'40;font-weight:700;">'+t+'</span>';
+      }).join(' ');
+
+      html += '<div class="usang-bin-card" style="border-color:' + tier.border + ';background:' + tier.bg + ';">'
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;">'
+          + '<div style="flex:1;min-width:0;margin-right:8px;">'
+            + '<div style="font-size:10px;color:var(--muted);font-family:var(--mono);">' + escHtml(s.kode) + '</div>'
+            + '<div style="font-size:13px;font-weight:800;color:' + tier.color + ';line-height:1.3;">' + escHtml(s.nama) + '</div>'
+          + '</div>'
+          + '<div style="text-align:right;flex-shrink:0;">'
+            + '<div style="font-size:12px;font-weight:700;color:' + tier.color + ';">' + daysLabel + '</div>'
+            + '<div style="font-size:10px;color:var(--muted);">' + (s.latestStr ? s.latestStr.split(' ')[0] : '—') + opLabel + '</div>'
+          + '</div>'
+        + '</div>'
+        + '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">📍 ' + escHtml(binStr) + '</div>'
+        + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+          + tipeBadge
+          + '<span style="font-size:10px;color:#2563eb;background:#2563eb15;border:1px solid #2563eb30;padding:1px 7px;border-radius:4px;font-weight:700;">'
+            + s.totalEff + ' plt efektif</span>'
+          + '<span style="font-size:10px;color:var(--muted);">' + s.bins.length + ' bin</span>'
         + '</div>'
         + '</div>';
     });
