@@ -3023,42 +3023,27 @@ function renderUsang(rawData) {
   document.getElementById('usang-results').innerHTML = html;
 }
 
-// ── USANG BY BARANG ──
+// ── USANG BY BARANG (per SKU per Bin) ──
 function renderUsangBarang(rawData) {
-  // Agregasi per SKU: lastUpdate terbaru dari semua bin yang punya SKU itu
-  var skuMap = {};
-  rawData.forEach(function(r) {
-    var k  = r.skuKode;
+  var items = rawData.map(function(r) {
     var dt = _parseLastUpdate(r.lastUpdate);
-    if (!skuMap[k]) {
-      skuMap[k] = { kode:k, nama:r.skuNama||k, latestDate:dt, latestStr:r.lastUpdate||'',
-                    operator:'', totalEff:0, bins:[], tipes:{} };
-    }
-    if (dt && (!skuMap[k].latestDate || dt > skuMap[k].latestDate)) {
-      skuMap[k].latestDate = dt;
-      skuMap[k].latestStr  = r.lastUpdate || '';
-      skuMap[k].operator   = r.operator   || '';
-    }
-    if (!skuMap[k].operator && r.operator) skuMap[k].operator = r.operator;
-    skuMap[k].totalEff += pecEff(r);
-    skuMap[k].tipes[r.tipe || 'LOKAL'] = true;
-    // Track bins list (unique)
-    var binEntry = skuMap[k].bins.find(function(b){ return b.bin === r.binLoc; });
-    if (binEntry) { binEntry.eff += pecEff(r); }
-    else skuMap[k].bins.push({ bin: r.binLoc, eff: pecEff(r) });
+    return {
+      kode:       r.skuKode,
+      nama:       r.skuNama || r.skuKode,
+      bin:        r.binLoc,
+      tipe:       r.tipe || 'LOKAL',
+      eff:        pecEff(r),
+      latestDate: dt,
+      latestStr:  r.lastUpdate || '',
+      operator:   r.operator   || '',
+      days:       _staleDays(dt),
+      tier:       _staleTier(_staleDays(dt))
+    };
   });
 
-  var items = Object.keys(skuMap).map(function(k) {
-    var s    = skuMap[k];
-    s.days   = _staleDays(s.latestDate);
-    s.tier   = _staleTier(s.days);
-    return s;
-  });
-
-  // Apply filter
   var filtered = items.filter(function(s) {
-    if (_usangFilter === 'LOKAL')  return s.tipes['LOKAL'];
-    if (_usangFilter === 'EKSPOR') return s.tipes['EKSPOR'];
+    if (_usangFilter === 'LOKAL')  return s.tipe === 'LOKAL';
+    if (_usangFilter === 'EKSPOR') return s.tipe === 'EKSPOR';
     var minDays = parseInt(_usangFilter, 10);
     if (!isNaN(minDays)) return s.days === null || s.days >= minDays;
     return true;
@@ -3070,31 +3055,30 @@ function renderUsangBarang(rawData) {
     return db - da;
   });
 
-  // Summary bar
   var counts = { kritis:0, lama:0, cek:0, fresh:0, unknown:0 };
   items.forEach(function(s) { counts[s.tier]++; });
   var sumEl = document.getElementById('usang-summary');
   sumEl.style.display = 'flex';
   sumEl.innerHTML =
-    '<span style="color:var(--muted);font-weight:700;">Total: <b style="color:var(--text)">' + items.length + '</b> SKU</span>'
-    + '<span style="color:#dc2626">🔴 ' + counts.kritis + '</span>'
-    + '<span style="color:#ea580c">🟠 ' + counts.lama   + '</span>'
-    + '<span style="color:#d97706">🟡 ' + counts.cek    + '</span>'
-    + '<span style="color:#16a34a">🟢 ' + counts.fresh  + '</span>'
-    + (counts.unknown ? '<span style="color:var(--muted)">⚪ ' + counts.unknown + '</span>' : '');
+    '<span style="color:var(--muted);font-weight:700;">Total: <b style="color:var(--text)">' + items.length + '</b> entri</span>'
+    + '<span style="color:#dc2626">\u{1F534} ' + counts.kritis + '</span>'
+    + '<span style="color:#ea580c">\u{1F7E0} ' + counts.lama   + '</span>'
+    + '<span style="color:#d97706">\u{1F7E1} ' + counts.cek    + '</span>'
+    + '<span style="color:#16a34a">\u{1F7E2} ' + counts.fresh  + '</span>'
+    + (counts.unknown ? '<span style="color:var(--muted)">\u26AA ' + counts.unknown + '</span>' : '');
 
   if (!filtered.length) {
     document.getElementById('usang-results').innerHTML =
-      '<div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;"><div style="font-size:32px;margin-bottom:10px;">✅</div>Tidak ada barang yang sesuai filter</div>';
+      '<div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;"><div style="font-size:32px;margin-bottom:10px;">\u2705</div>Tidak ada barang yang sesuai filter</div>';
     return;
   }
 
   var TIERS = [
-    { id:'kritis', label:'🔴 Kritis — tidak update > 30 hari', color:'#dc2626', bg:'#fef2f2', border:'#fecaca' },
-    { id:'lama',   label:'🟠 Lama — 7–30 hari',               color:'#ea580c', bg:'#fff7ed', border:'#fed7aa' },
-    { id:'cek',    label:'🟡 Perlu dicek — 1–7 hari',          color:'#d97706', bg:'#fffbeb', border:'#fde68a' },
-    { id:'fresh',  label:'🟢 Terbaru — hari ini',              color:'#16a34a', bg:'#f0fdf4', border:'#bbf7d0' },
-    { id:'unknown',label:'⚪ Tidak ada data update',           color:'#6b7280', bg:'var(--surface2)', border:'var(--border)' }
+    { id:'kritis', label:'\u{1F534} Kritis \u2014 tidak update > 30 hari', color:'#dc2626', bg:'#fef2f2', border:'#fecaca' },
+    { id:'lama',   label:'\u{1F7E0} Lama \u2014 7\u201330 hari',          color:'#ea580c', bg:'#fff7ed', border:'#fed7aa' },
+    { id:'cek',    label:'\u{1F7E1} Perlu dicek \u2014 1\u20137 hari',    color:'#d97706', bg:'#fffbeb', border:'#fde68a' },
+    { id:'fresh',  label:'\u{1F7E2} Terbaru \u2014 hari ini',              color:'#16a34a', bg:'#f0fdf4', border:'#bbf7d0' },
+    { id:'unknown',label:'\u26AA Tidak ada data update',                    color:'#6b7280', bg:'var(--surface2)', border:'var(--border)' }
   ];
 
   var html = '';
@@ -3102,41 +3086,30 @@ function renderUsangBarang(rawData) {
     var group = filtered.filter(function(s) { return s.tier === tier.id; });
     if (!group.length) return;
     html += '<div class="usang-tier-header" style="color:' + tier.color + '">' + tier.label + ' (' + group.length + ')</div>';
-
     group.forEach(function(s) {
-      var daysLabel = s.days === null ? '—' : (s.days === 0 ? 'Hari ini' : s.days + ' hari lalu');
-      var opLabel   = s.operator ? ' · 👤 ' + s.operator : '';
-      // Bins list: max 3, sisanya "+N bin"
-      var binStr = s.bins.slice(0,3).map(function(b){ return b.bin + '(' + b.eff + 'p)'; }).join(', ')
-                 + (s.bins.length > 3 ? ' +' + (s.bins.length-3) + ' bin' : '');
-      var tipeBadge = Object.keys(s.tipes).map(function(t) {
-        var c  = t === 'LOKAL' ? '#16a34a' : '#7c3aed';
-        var bg = t === 'LOKAL' ? '#16a34a15' : '#7c3aed15';
-        return '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:'+bg+';color:'+c+';border:1px solid '+c+'40;font-weight:700;">'+t+'</span>';
-      }).join(' ');
-
+      var daysLabel = s.days === null ? '\u2014' : (s.days === 0 ? 'Hari ini' : s.days + ' hari lalu');
+      var opLabel   = s.operator ? ' \u00B7 \u{1F464} ' + s.operator : '';
+      var tipeC  = s.tipe === 'LOKAL' ? '#16a34a' : '#7c3aed';
+      var tipeBg = s.tipe === 'LOKAL' ? '#16a34a15' : '#7c3aed15';
       html += '<div class="usang-bin-card" style="border-color:' + tier.border + ';background:' + tier.bg + ';">'
-        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;">'
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;">'
           + '<div style="flex:1;min-width:0;margin-right:8px;">'
             + '<div style="font-size:10px;color:var(--muted);font-family:var(--mono);">' + escHtml(s.kode) + '</div>'
             + '<div style="font-size:13px;font-weight:800;color:' + tier.color + ';line-height:1.3;">' + escHtml(s.nama) + '</div>'
           + '</div>'
           + '<div style="text-align:right;flex-shrink:0;">'
             + '<div style="font-size:12px;font-weight:700;color:' + tier.color + ';">' + daysLabel + '</div>'
-            + '<div style="font-size:10px;color:var(--muted);">' + (s.latestStr ? s.latestStr.split(' ')[0] : '—') + opLabel + '</div>'
+            + '<div style="font-size:10px;color:var(--muted);">' + (s.latestStr ? s.latestStr.split(' ')[0] : '\u2014') + opLabel + '</div>'
           + '</div>'
         + '</div>'
-        + '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">📍 ' + escHtml(binStr) + '</div>'
         + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
-          + tipeBadge
-          + '<span style="font-size:10px;color:#2563eb;background:#2563eb15;border:1px solid #2563eb30;padding:1px 7px;border-radius:4px;font-weight:700;">'
-            + s.totalEff + ' plt efektif</span>'
-          + '<span style="font-size:10px;color:var(--muted);">' + s.bins.length + ' bin</span>'
+          + '<span style="font-size:11px;font-weight:700;color:var(--text);background:var(--surface2);border:1px solid var(--border);padding:2px 8px;border-radius:6px;font-family:var(--mono);">\u{1F4CD} ' + escHtml(s.bin) + '</span>'
+          + '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:'+tipeBg+';color:'+tipeC+';border:1px solid '+tipeC+'40;font-weight:700;">' + s.tipe + '</span>'
+          + '<span style="font-size:10px;color:#2563eb;background:#2563eb15;border:1px solid #2563eb30;padding:1px 7px;border-radius:4px;font-weight:700;">' + s.eff + ' plt efektif</span>'
         + '</div>'
         + '</div>';
     });
   });
-
   document.getElementById('usang-results').innerHTML = html;
 }
 
