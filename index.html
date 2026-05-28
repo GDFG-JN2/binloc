@@ -3247,6 +3247,30 @@ function startScanBinForMasuk() {
   setTimeout(function(){ startCamera(); }, 400); // beri jeda setelah screen render
 }
 
+var _scanZoom          = 1.0;
+var _scanZoomMin       = 1.0;
+var _scanZoomMax       = 3.0;
+var _scanZoomStep      = 0.5;
+var _scanZoomHardware  = false;
+var _scanTrack         = null;
+var _scanNoDetectFrames = 0;
+var ZOOM_TRIGGER_FRAMES = 55; // ~2 detik tanpa deteksi → zoom in
+
+function _applyZoom(z) {
+  _scanZoom = Math.max(_scanZoomMin, Math.min(_scanZoomMax, z));
+  if (_scanZoomHardware && _scanTrack) {
+    _scanTrack.applyConstraints({ advanced: [{ zoom: _scanZoom }] }).catch(function(){});
+  } else {
+    var v = document.getElementById('scan-video');
+    if (v) v.style.transform = 'scale(' + _scanZoom + ')';
+  }
+}
+
+function _resetZoom() {
+  _scanNoDetectFrames = 0;
+  _applyZoom(_scanZoomMin);
+}
+
 // ═══════════════════════════════════════
 // BARCODE SCANNER
 // ═══════════════════════════════════════
@@ -3268,6 +3292,25 @@ function startCamera() {
     video.srcObject = stream;
     video.play();
     status.textContent = '🔍 Arahkan ke QR Code...';
+
+    // Setup auto-zoom
+    _scanZoomHardware  = false;
+    _scanZoomMin       = 1.0;
+    _scanZoomMax       = 3.0;
+    _scanZoomStep      = 0.5;
+    _scanZoom          = 1.0;
+    _scanNoDetectFrames = 0;
+    _scanTrack = stream.getVideoTracks()[0];
+    if (_scanTrack) {
+      var caps = _scanTrack.getCapabilities ? _scanTrack.getCapabilities() : {};
+      if (caps.zoom) {
+        _scanZoomHardware = true;
+        _scanZoomMin      = caps.zoom.min;
+        _scanZoomMax      = Math.min(caps.zoom.max, caps.zoom.min * 4);
+        _scanZoomStep     = (_scanZoomMax - _scanZoomMin) / 5;
+        _scanZoom         = _scanZoomMin;
+      }
+    }
 
     if (typeof BarcodeDetector !== 'undefined') {
       _scanDetector = new BarcodeDetector({ formats: ['qr_code'] });
@@ -3304,9 +3347,12 @@ function scanLoop() {
         var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
         if (code && code.data) {
           status.textContent = '✅ QR: ' + code.data;
+          _resetZoom();
           stopScanner();
           setTimeout(function() { processScanResult(code.data); }, 150);
           return;
+        } else {
+          _autoZoomTick();
         }
       }
       scanLoop();
@@ -3318,9 +3364,11 @@ function scanLoop() {
       if (codes.length > 0) {
         var raw = codes[0].rawValue;
         status.textContent = '✅ QR: ' + raw;
+        _resetZoom();
         stopScanner();
         setTimeout(function() { processScanResult(raw); }, 150);
       } else {
+        _autoZoomTick();
         scanLoop();
       }
     }).catch(function() {
@@ -3329,10 +3377,27 @@ function scanLoop() {
   });
 }
 
+function _autoZoomTick() {
+  _scanNoDetectFrames++;
+  if (_scanNoDetectFrames >= ZOOM_TRIGGER_FRAMES) {
+    _scanNoDetectFrames = 0;
+    var next = _scanZoom + _scanZoomStep;
+    if (next > _scanZoomMax) next = _scanZoomMin; // cycle back
+    _applyZoom(next);
+  }
+}
+
 function stopScanner() {
   if (_scanAnimFrame) { cancelAnimationFrame(_scanAnimFrame); _scanAnimFrame = null; }
-  if (_scanStream)    { _scanStream.getTracks().forEach(function(t){ t.stop(); }); _scanStream = null; }
+  if (_scanZoomHardware && _scanTrack) {
+    try { _scanTrack.applyConstraints({ advanced: [{ zoom: _scanZoomMin }] }); } catch(e){}
+  } else {
+    var v = document.getElementById('scan-video');
+    if (v) v.style.transform = '';
+  }
+  if (_scanStream) { _scanStream.getTracks().forEach(function(t){ t.stop(); }); _scanStream = null; }
   _scanDetector = null;
+  _scanTrack    = null;
   var video = document.getElementById('scan-video');
   if (video) video.srcObject = null;
 }
