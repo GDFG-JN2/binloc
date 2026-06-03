@@ -1,4 +1,4 @@
-var CACHE = 'binloc-v6';
+var CACHE = 'binloc-v1.5';
 var ASSETS = [
   'index.html',
   'operator.html',
@@ -25,7 +25,11 @@ self.addEventListener('activate', function(e) {
   self.clients.claim();
 });
 
-self.addEventListener('fetch', function(e) {
+self.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'GET_VERSION') {
+    e.ports[0].postMessage({ version: CACHE });
+  }
+});
   var url = e.request.url;
   if (url.includes('script.google.com') || url.includes('workers.dev') || url.includes('cdnjs')) {
     return;
