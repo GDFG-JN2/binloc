@@ -1170,9 +1170,9 @@ input:focus, select:focus {
       </div>
       <!-- Shift toggle -->
       <div style="display:flex;gap:6px;margin-bottom:16px;">
-        <div class="shift-btn" id="shift-btn-PAGI"  onclick="setShift('PAGI')" >🌅 Pagi</div>
-        <div class="shift-btn" id="shift-btn-SIANG" onclick="setShift('SIANG')">☀️ Siang</div>
-        <div class="shift-btn" id="shift-btn-MALAM" onclick="setShift('MALAM')">🌙 Malam</div>
+        <div class="shift-btn" id="shift-btn-PAGI"  onclick="setShift('PAGI')" >1️⃣ Shift 1</div>
+        <div class="shift-btn" id="shift-btn-SIANG" onclick="setShift('SIANG')">2️⃣ Shift 2</div>
+        <div class="shift-btn" id="shift-btn-MALAM" onclick="setShift('MALAM')">3️⃣ Shift 3</div>
       </div>
       <!-- Result area -->
       <div id="shift-results">
@@ -2408,6 +2408,7 @@ function setSearchTipe(tipe) {
   if (isRiwayat) { initRiwayat(); loadRiwayat(); }
   if (isUsang)   loadUsang();
   if (isShift)   initShiftPane();
+  if (!isShift)  _stopShiftAutoRefresh();
 }
 
 // ══ PETA SEBARAN ══
@@ -3169,11 +3170,27 @@ function _todayISO() {
     + String(d.getDate()).padStart(2,'0');
 }
 
+var _shiftRefreshTimer = null;
+
 function initShiftPane() {
-  // Set default: tanggal hari ini, shift saat ini
   var dateInput = document.getElementById('shift-date');
   if (!dateInput.value) dateInput.value = _todayISO();
   setShift(_currentShift());
+}
+
+function _startShiftAutoRefresh() {
+  _stopShiftAutoRefresh();
+  _shiftRefreshTimer = setInterval(function() {
+    if (document.getElementById('shift-pane').style.display !== 'none') {
+      loadShiftReport(true); // silent refresh
+    } else {
+      _stopShiftAutoRefresh();
+    }
+  }, 30000);
+}
+
+function _stopShiftAutoRefresh() {
+  if (_shiftRefreshTimer) { clearInterval(_shiftRefreshTimer); _shiftRefreshTimer = null; }
 }
 
 function setShift(s) {
@@ -3182,23 +3199,25 @@ function setShift(s) {
     var b = document.getElementById('shift-btn-' + x);
     if (b) b.classList.toggle('active', x === s);
   });
-  // Auto-load kalau tanggal sudah terisi
   if (document.getElementById('shift-date') && document.getElementById('shift-date').value) {
     loadShiftReport();
   }
 }
 
-function loadShiftReport() {
+function loadShiftReport(silent) {
   var tanggal = document.getElementById('shift-date').value;
   if (!tanggal) { alert('Pilih tanggal dulu'); return; }
 
   var resultsEl = document.getElementById('shift-results');
-  resultsEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;"><div style="font-size:28px;margin-bottom:8px">⏳</div>Memuat...</div>';
+  if (!silent) {
+    resultsEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;"><div style="font-size:28px;margin-bottom:8px">\u23F3</div>Memuat...</div>';
+  }
 
   gasCall('getShiftSummary', { tanggal: tanggal, shift: _shiftSelected }, function(data) {
     renderShiftReport(data);
+    _startShiftAutoRefresh(); // restart timer setiap berhasil load
   }, function() {
-    resultsEl.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;font-size:12px;">❌ Gagal memuat data</div>';
+    if (!silent) resultsEl.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;font-size:12px;">\u274C Gagal memuat data</div>';
   });
 }
 
@@ -3208,7 +3227,7 @@ function renderShiftReport(d) {
 
   // Shift label
   var shiftClr = d.shift === 'PAGI' ? '#f59e0b' : d.shift === 'SIANG' ? '#2563eb' : '#6366f1';
-  var shiftIcon = d.shift === 'PAGI' ? '🌅' : d.shift === 'SIANG' ? '☀️' : '🌙';
+  var shiftIcon = d.shift === 'PAGI' ? '1️⃣' : d.shift === 'SIANG' ? '2️⃣' : '3️⃣';
 
   var html = '';
 
@@ -3216,11 +3235,12 @@ function renderShiftReport(d) {
   html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px;">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
       + '<div>'
-        + '<span style="font-size:18px;font-weight:900;color:' + shiftClr + ';">' + shiftIcon + ' ' + d.shift + '</span>'
+        + '<span style="font-size:18px;font-weight:900;color:' + shiftClr + ';">' + shiftIcon + ' ' + (d.shift === 'PAGI' ? 'Shift 1' : d.shift === 'SIANG' ? 'Shift 2' : 'Shift 3') + '</span>'
         + '<span style="font-size:11px;color:var(--muted);margin-left:8px;">' + d.shiftLabel + '</span>'
       + '</div>'
       + '<div style="font-size:11px;color:var(--muted);">' + d.tanggal + '</div>'
     + '</div>'
+    + '<div style="font-size:9px;color:var(--muted);margin-bottom:10px;">🔄 Auto refresh 30 detik · Terakhir: ' + new Date().toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) + '</div>'
     // Total + breakdown
     + '<div style="display:flex;gap:8px;">'
       + '<div style="flex:1;text-align:center;background:var(--surface2);border-radius:10px;padding:10px 4px;">'
