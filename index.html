@@ -561,11 +561,7 @@ input:focus, select:focus {
   <div class="splash-dots">
     <span></span><span></span><span></span>
   </div>
-  <div id="splash-version" style="position:absolute;bottom:32px;font-size:11px;color:var(--muted);letter-spacing:1px;"></div>
 </div>
-
-<!-- Version badge — tampil di semua screen -->
-<div id="app-version-badge" style="position:fixed;bottom:8px;right:10px;font-size:9px;color:var(--muted);opacity:.45;z-index:9;pointer-events:none;font-family:var(--mono);"></div>
 
 <!-- ═══════════════════════════════
      SCREEN 1: PILIH TIPE
@@ -598,9 +594,12 @@ input:focus, select:focus {
   </div>
 
   <!-- Update App button -->
-  <button onclick="updateApp()" id="btn-update-app" style="margin-top:20px;padding:8px 20px;background:none;border:1px solid var(--border);border-radius:20px;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--mono);display:flex;align-items:center;gap:6px;">
-    🔄 <span id="update-app-label">Update App</span>
-  </button>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:20px;">
+    <button onclick="updateApp()" id="btn-update-app" style="padding:8px 20px;background:none;border:1px solid var(--border);border-radius:20px;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--mono);display:flex;align-items:center;gap:6px;">
+      🔄 <span id="update-app-label">Update App</span>
+    </button>
+    <div id="splash-version" style="font-size:10px;color:var(--muted);opacity:.6;font-family:var(--mono);letter-spacing:1px;"></div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════
@@ -4451,10 +4450,8 @@ function _fetchSwVersion() {
     var ver = (e.data && e.data.version) ? e.data.version : '';
     if (!ver) return;
     var label = ver.replace(/^binloc-/, '');
-    var splashEl = document.getElementById('splash-version');
-    var badgeEl  = document.getElementById('app-version-badge');
-    if (splashEl) splashEl.textContent = label;
-    if (badgeEl)  badgeEl.textContent  = label;
+    var el = document.getElementById('splash-version');
+    if (el) el.textContent = label;
   };
   navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [mc.port2]);
 }
