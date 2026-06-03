@@ -4442,33 +4442,26 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(function(){});
 }
 
-// ── Ambil versi dari Service Worker ──
+// ── Ambil versi dari sw.js ──
 function _fetchSwVersion() {
-  if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
-  var mc = new MessageChannel();
-  mc.port1.onmessage = function(e) {
-    var ver = (e.data && e.data.version) ? e.data.version : '';
-    if (!ver) return;
-    var label = ver.replace(/^binloc-/, '');
-    var el = document.getElementById('splash-version');
-    if (el) el.textContent = label;
-  };
-  navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [mc.port2]);
+  fetch('sw.js?_=' + Date.now())
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      var m = text.match(/var\s+CACHE\s*=\s*['"]([^'"]+)['"]/);
+      if (!m) return;
+      var label = m[1].replace(/^binloc-/, '');
+      var el = document.getElementById('splash-version');
+      if (el) el.textContent = label;
+    })
+    .catch(function() {});
 }
 
 window.addEventListener('load', function() {
-  // Unlock orientation — allow auto-rotate meski PWA sudah install dengan manifest lama
+  // Unlock orientation
   if (screen.orientation && screen.orientation.unlock) {
     try { screen.orientation.unlock(); } catch(e) {}
   }
-  if (navigator.serviceWorker) {
-    navigator.serviceWorker.ready.then(function() {
-      _fetchSwVersion();
-      if (!navigator.serviceWorker.controller) {
-        navigator.serviceWorker.addEventListener('controllerchange', _fetchSwVersion);
-      }
-    });
-  }
+  _fetchSwVersion();
 });
 
 </script>
