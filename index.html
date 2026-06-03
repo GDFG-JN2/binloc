@@ -3183,6 +3183,10 @@ function setShift(s) {
     var b = document.getElementById('shift-btn-' + x);
     if (b) b.classList.toggle('active', x === s);
   });
+  // Auto-load kalau tanggal sudah terisi
+  if (document.getElementById('shift-date') && document.getElementById('shift-date').value) {
+    loadShiftReport();
+  }
 }
 
 function loadShiftReport() {
@@ -4456,6 +4460,10 @@ function _fetchSwVersion() {
 }
 
 window.addEventListener('load', function() {
+  // Unlock orientation — allow auto-rotate meski PWA sudah install dengan manifest lama
+  if (screen.orientation && screen.orientation.unlock) {
+    try { screen.orientation.unlock(); } catch(e) {}
+  }
   if (navigator.serviceWorker) {
     navigator.serviceWorker.ready.then(function() {
       _fetchSwVersion();
