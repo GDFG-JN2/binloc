@@ -1610,6 +1610,7 @@ function pilihTipe(tipe) {
   badgeBin.textContent  = tipe; badgeBin.className  = 'badge ' + tipe.toLowerCase();
   badgeForm.textContent = tipe; badgeForm.className = 'badge ' + tipe.toLowerCase();
   document.getElementById('wrap-quotation').style.display = tipe === 'EKSPOR' ? 'block' : 'none';
+  document.getElementById('prodate-label').textContent = tipe === 'EKSPOR' ? 'Prodate / Exp Date' : 'Prodate';
   var submitBtn = document.getElementById('submit-btn');
   submitBtn.className = 'submit-btn' + (tipe === 'EKSPOR' ? ' ekspor-mode' : '');
   var confirmBtn = document.getElementById('bin-confirm-btn');
