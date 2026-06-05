@@ -3222,6 +3222,16 @@ function loadShiftReport(silent) {
   });
 }
 
+// Helper: render qty cell (pallet + pecahan) untuk tabel per SKU
+function _skuQtyCell(plt, pec, color) {
+  if (!plt && !pec) return '<span style="color:var(--border);">—</span>';
+  var html = '';
+  if (plt > 0) html += '<span style="font-size:12px;font-weight:800;color:'+color+';">'+plt+'</span><span style="font-size:9px;color:'+color+';">p</span>';
+  if (plt > 0 && pec > 0) html += '<br>';
+  if (pec > 0) html += '<span style="font-size:10px;font-weight:700;color:'+color+';">'+pec+'</span><span style="font-size:9px;color:'+color+';">ktn</span>';
+  return html;
+}
+
 function renderShiftReport(d) {
   var el = document.getElementById('shift-results');
   if (!d || !d.ok) { el.innerHTML = '<div style="color:#ef4444;padding:20px;">❌ ' + (d && d.msg || 'Error') + '</div>'; return; }
@@ -3296,6 +3306,38 @@ function renderShiftReport(d) {
     });
   } else {
     html += '<div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Tidak ada transaksi pada shift ini</div>';
+  }
+
+  // Per SKU summary
+  var skuKeys = Object.keys(d.bySku || {});
+  if (skuKeys.length) {
+    // Sort by total pallet activity terbanyak
+    skuKeys.sort(function(a, b) {
+      var sa = d.bySku[a], sb = d.bySku[b];
+      return (sb.pltMasuk + sb.pltKeluar + sb.pltPindah) - (sa.pltMasuk + sa.pltKeluar + sa.pltPindah);
+    });
+    html += '<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;">Per SKU</div>';
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">';
+    // Header
+    html += '<div style="display:grid;grid-template-columns:1fr 52px 52px 52px;gap:4px;padding:8px 12px;background:var(--surface2);font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;">'
+      + '<div>SKU</div>'
+      + '<div style="text-align:center;color:#16a34a;">Masuk</div>'
+      + '<div style="text-align:center;color:#dc2626;">Keluar</div>'
+      + '<div style="text-align:center;color:#2563eb;">Pindah</div>'
+    + '</div>';
+    skuKeys.forEach(function(k) {
+      var s = d.bySku[k];
+      html += '<div style="display:grid;grid-template-columns:1fr 52px 52px 52px;gap:4px;padding:9px 12px;border-top:1px solid var(--border);align-items:center;">'
+        + '<div>'
+          + '<div style="font-size:9px;color:var(--muted);font-family:var(--mono);">' + escHtml(s.kode) + '</div>'
+          + '<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.3;">' + escHtml(s.nama) + '</div>'
+        + '</div>'
+        + '<div style="text-align:center;">' + _skuQtyCell(s.pltMasuk,  s.pecMasuk,  '#16a34a') + '</div>'
+        + '<div style="text-align:center;">' + _skuQtyCell(s.pltKeluar, s.pecKeluar, '#dc2626') + '</div>'
+        + '<div style="text-align:center;">' + _skuQtyCell(s.pltPindah, s.pecPindah, '#2563eb') + '</div>'
+      + '</div>';
+    });
+    html += '</div>';
   }
 
   // Transaction list
