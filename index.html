@@ -4094,6 +4094,27 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(function(){});
 }
 
+// ── Ambil versi dari sw.js ──
+function _fetchSwVersion() {
+  fetch('sw.js?_=' + Date.now())
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      var m = text.match(/var\s+CACHE\s*=\s*['"]([^'"]+)['"]/);
+      if (!m) return;
+      var label = m[1].replace(/^binloc-/, '');
+      var el = document.getElementById('splash-version');
+      if (el) el.textContent = label;
+    })
+    .catch(function() {});
+}
+
+window.addEventListener('load', function() {
+  if (screen.orientation && screen.orientation.unlock) {
+    try { screen.orientation.unlock(); } catch(e) {}
+  }
+  _fetchSwVersion();
+});
+
 </script>
 
 <!-- Modal Edit Kapasitas -->
