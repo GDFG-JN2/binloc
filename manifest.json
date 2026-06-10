@@ -1,6 +1,6 @@
 {
   "name": "BinLoc Operator",
-  "short_name": "BinLoc",
+  "short_name": "FG BinLoc",
   "description": "Warehouse Bin Location Tracker",
   "start_url": "index.html",
   "display": "standalone",
