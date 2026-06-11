@@ -433,6 +433,14 @@ input:focus, select:focus {
 .search-tipe-btn.active { border-color: #2563eb; background: #2563eb15; color: #2563eb; font-weight:700; }
 .search-tipe-btn.peta-active { border-color: #3b82f6; background: #3b82f620; color: #3b82f6; }
 .search-tipe-btn.usang-active { border-color: #f59e0b; background: #f59e0b20; color: #d97706; font-weight:700; }
+.search-tipe-btn.shift-active { border-color: #6366f1; background: #6366f120; color: #4f46e5; font-weight:700; }
+/* ── SHIFT PANE ── */
+#shift-pane { display:none; padding-bottom:80px; }
+.shift-btn { padding:8px 18px; border-radius:20px; border:1px solid var(--border); background:var(--surface2); font-size:12px; font-weight:700; cursor:pointer; color:var(--muted); transition:all .15s; flex:1; text-align:center; }
+.shift-btn.active { border-color:#6366f1; background:#6366f1; color:#fff; }
+.shift-op-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:8px; }
+.shift-tx-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:11px; }
+.shift-tx-row:last-child { border-bottom:none; }
 /* ── USANG PANE ── */
 #usang-pane { display:none; padding-bottom:80px; }
 .usang-filter-btn {
@@ -1030,6 +1038,7 @@ input:focus, select:focus {
         <div class="search-tipe-btn"        id="stipe-PETA"    onclick="setSearchTipe('PETA')"   style="flex-shrink:0">🗺️ Peta</div>
         <div class="search-tipe-btn"        id="stipe-RIWAYAT" onclick="setSearchTipe('RIWAYAT')" style="flex-shrink:0">📋 Riwayat</div>
         <div class="search-tipe-btn"        id="stipe-USANG"   onclick="setSearchTipe('USANG')"   style="flex-shrink:0">⏰ Usang</div>
+        <div class="search-tipe-btn"        id="stipe-SHIFT"   onclick="setSearchTipe('SHIFT')"   style="flex-shrink:0">📊 Shift</div>
       </div>
       </div>
     </div>
@@ -1146,6 +1155,25 @@ input:focus, select:focus {
         <div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;">
           <div style="font-size:32px;margin-bottom:10px;">⏰</div>
           Pilih filter atau tunggu data dimuat
+        </div>
+      </div>
+    </div>
+
+    <!-- Shift Report Pane -->
+    <div id="shift-pane">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+        <input type="date" id="shift-date" style="flex:1;padding:9px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;">
+        <button onclick="loadShiftReport()" style="padding:9px 16px;border-radius:10px;background:#6366f1;color:#fff;border:none;font-weight:700;font-size:13px;cursor:pointer;">Lihat</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:16px;">
+        <div class="shift-btn" id="shift-btn-PAGI"  onclick="setShift('PAGI')" >1️⃣ Shift 1</div>
+        <div class="shift-btn" id="shift-btn-SIANG" onclick="setShift('SIANG')">2️⃣ Shift 2</div>
+        <div class="shift-btn" id="shift-btn-MALAM" onclick="setShift('MALAM')">3️⃣ Shift 3</div>
+      </div>
+      <div id="shift-results">
+        <div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;">
+          <div style="font-size:32px;margin-bottom:10px;">📊</div>
+          Pilih tanggal dan shift, lalu tap Lihat
         </div>
       </div>
     </div>
@@ -2343,18 +2371,19 @@ var searchTipe = 'SEMUA';
 function setSearchTipe(tipe) {
   searchTipe = tipe;
   document.querySelectorAll('.search-tipe-btn').forEach(function(b) {
-    b.classList.remove('active','peta-active','usang-active');
+    b.classList.remove('active','peta-active','usang-active','shift-active');
   });
   var btn = document.getElementById('stipe-' + tipe);
   if (tipe === 'PETA')        btn.classList.add('peta-active');
   else if (tipe === 'USANG')  btn.classList.add('usang-active');
+  else if (tipe === 'SHIFT')  btn.classList.add('shift-active');
   else                        btn.classList.add('active');
 
-  // Toggle search fields vs peta pane vs riwayat pane vs usang pane
-  var isPeta     = tipe === 'PETA';
-  var isRiwayat  = tipe === 'RIWAYAT';
-  var isUsang    = tipe === 'USANG';
-  var isSearch   = !isPeta && !isRiwayat && !isUsang;
+  var isPeta    = tipe === 'PETA';
+  var isRiwayat = tipe === 'RIWAYAT';
+  var isUsang   = tipe === 'USANG';
+  var isShift   = tipe === 'SHIFT';
+  var isSearch  = !isPeta && !isRiwayat && !isUsang && !isShift;
 
   document.querySelector('.form-section:nth-child(2)') && (
     document.querySelectorAll('#screen-search .form-section')[1].style.display = isSearch ? '' : 'none'
@@ -2365,6 +2394,7 @@ function setSearchTipe(tipe) {
   document.getElementById('peta-pane').style.display           = isPeta    ? 'block' : 'none';
   document.getElementById('riwayat-pane').style.display        = isRiwayat ? 'block' : 'none';
   document.getElementById('usang-pane').style.display          = isUsang   ? 'block' : 'none';
+  document.getElementById('shift-pane').style.display          = isShift   ? 'block' : 'none';
   document.getElementById('wrap-search-quotation').style.display =
     (isSearch && (tipe === 'EKSPOR' || tipe === 'SEMUA')) ? 'block' : 'none';
 
@@ -2372,6 +2402,8 @@ function setSearchTipe(tipe) {
   if (isPeta)    petaLoadMap();
   if (isRiwayat) { initRiwayat(); loadRiwayat(); }
   if (isUsang)   loadUsang();
+  if (isShift)   initShiftPane();
+  if (!isShift)  _stopShiftAutoRefresh();
 }
 
 // ══ PETA SEBARAN ══
@@ -3001,6 +3033,180 @@ function renderUsang(rawData) {
   });
 
   document.getElementById('usang-results').innerHTML = html;
+}
+
+// ═══════════════════════════════════════
+// SHIFT REPORT
+// ═══════════════════════════════════════
+var _shiftSelected     = 'PAGI';
+var _shiftRefreshTimer = null;
+
+function _currentShift() {
+  var h = new Date().getHours();
+  if (h >= 7  && h < 15) return 'PAGI';
+  if (h >= 15 && h < 23) return 'SIANG';
+  return 'MALAM';
+}
+
+function _todayISO() {
+  var d = new Date();
+  return d.getFullYear() + '-'
+    + String(d.getMonth()+1).padStart(2,'0') + '-'
+    + String(d.getDate()).padStart(2,'0');
+}
+
+function initShiftPane() {
+  var dateInput = document.getElementById('shift-date');
+  if (!dateInput.value) dateInput.value = _todayISO();
+  setShift(_currentShift());
+}
+
+function _startShiftAutoRefresh() {
+  _stopShiftAutoRefresh();
+  _shiftRefreshTimer = setInterval(function() {
+    if (document.getElementById('shift-pane').style.display !== 'none') {
+      loadShiftReport(true);
+    } else {
+      _stopShiftAutoRefresh();
+    }
+  }, 30000);
+}
+
+function _stopShiftAutoRefresh() {
+  if (_shiftRefreshTimer) { clearInterval(_shiftRefreshTimer); _shiftRefreshTimer = null; }
+}
+
+function setShift(s) {
+  _shiftSelected = s;
+  ['PAGI','SIANG','MALAM'].forEach(function(x) {
+    var b = document.getElementById('shift-btn-' + x);
+    if (b) b.classList.toggle('active', x === s);
+  });
+  if (document.getElementById('shift-date') && document.getElementById('shift-date').value) {
+    loadShiftReport();
+  }
+}
+
+function loadShiftReport(silent) {
+  var tanggal = document.getElementById('shift-date').value;
+  if (!tanggal) { alert('Pilih tanggal dulu'); return; }
+  var resultsEl = document.getElementById('shift-results');
+  if (!silent) {
+    resultsEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;"><div style="font-size:28px;margin-bottom:8px">⏳</div>Memuat...</div>';
+  }
+  gasCall('getShiftSummary', { tanggal: tanggal, shift: _shiftSelected }, function(data) {
+    renderShiftReport(data);
+    _startShiftAutoRefresh();
+  }, function() {
+    if (!silent) resultsEl.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;font-size:12px;">❌ Gagal memuat data</div>';
+  });
+}
+
+function _skuQtyCell(plt, pec, color) {
+  if (!plt && !pec) return '<span style="color:var(--border);">—</span>';
+  var html = '';
+  if (plt > 0) html += '<span style="font-size:12px;font-weight:800;color:'+color+';">'+plt+'</span><span style="font-size:9px;color:'+color+';">p</span>';
+  if (plt > 0 && pec > 0) html += '<br>';
+  if (pec > 0) html += '<span style="font-size:10px;font-weight:700;color:'+color+';">'+pec+'</span><span style="font-size:9px;color:'+color+';">ktn</span>';
+  return html;
+}
+
+function renderShiftReport(d) {
+  var el = document.getElementById('shift-results');
+  if (!d || !d.ok) { el.innerHTML = '<div style="color:#ef4444;padding:20px;">❌ ' + (d && d.msg || 'Error') + '</div>'; return; }
+
+  var shiftClr  = d.shift === 'PAGI' ? '#f59e0b' : d.shift === 'SIANG' ? '#2563eb' : '#6366f1';
+  var shiftIcon = d.shift === 'PAGI' ? '1️⃣' : d.shift === 'SIANG' ? '2️⃣' : '3️⃣';
+  var shiftName = d.shift === 'PAGI' ? 'Shift 1' : d.shift === 'SIANG' ? 'Shift 2' : 'Shift 3';
+  var html = '';
+
+  // Header summary
+  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
+      + '<span style="font-size:18px;font-weight:900;color:'+shiftClr+';">'+shiftIcon+' '+shiftName+'</span>'
+      + '<span style="font-size:11px;color:var(--muted);">'+shiftClr+'</span>'
+      + '<span style="font-size:11px;color:var(--muted);">'+d.tanggal+'</span>'
+    + '</div>'
+    + '<div style="font-size:9px;color:var(--muted);margin-bottom:10px;">'+d.shiftLabel+' · 🔄 Auto refresh 30 detik · Terakhir: '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'</div>'
+    + '<div style="display:flex;gap:8px;">'
+      + '<div style="flex:1;text-align:center;background:var(--surface2);border-radius:10px;padding:10px 4px;"><div style="font-size:22px;font-weight:900;color:var(--text);">'+d.total+'</div><div style="font-size:10px;color:var(--muted);">Total</div></div>'
+      + '<div style="flex:1;text-align:center;background:#16a34a15;border-radius:10px;padding:10px 4px;"><div style="font-size:22px;font-weight:900;color:#16a34a;">'+(d.byAksi.MASUK||0)+'</div><div style="font-size:10px;color:#16a34a;">Masuk</div></div>'
+      + '<div style="flex:1;text-align:center;background:#dc262615;border-radius:10px;padding:10px 4px;"><div style="font-size:22px;font-weight:900;color:#dc2626;">'+(d.byAksi.KELUAR||0)+'</div><div style="font-size:10px;color:#dc2626;">Keluar</div></div>'
+      + '<div style="flex:1;text-align:center;background:#2563eb15;border-radius:10px;padding:10px 4px;"><div style="font-size:22px;font-weight:900;color:#2563eb;">'+(d.byAksi.PINDAH||0)+'</div><div style="font-size:10px;color:#2563eb;">Pindah</div></div>'
+    + '</div>'
+  + '</div>';
+
+  // Per operator
+  var ops = Object.keys(d.byOperator || {});
+  if (ops.length) {
+    html += '<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Per Operator</div>';
+    ops.sort(function(a,b){ return d.byOperator[b].total - d.byOperator[a].total; });
+    ops.forEach(function(op) {
+      var ov  = d.byOperator[op];
+      var pct = d.total > 0 ? Math.round(ov.total / d.total * 100) : 0;
+      html += '<div class="shift-op-card">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+          + '<div style="display:flex;align-items:center;gap:8px;">'
+            + '<div style="width:32px;height:32px;border-radius:50%;background:'+shiftClr+'20;border:2px solid '+shiftClr+';display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:'+shiftClr+';">'+escHtml(op.substring(0,4))+'</div>'
+            + '<div><div style="font-weight:800;font-size:13px;">Operator '+escHtml(op)+'</div><div style="font-size:10px;color:var(--muted);">'+ov.total+' transaksi · '+pct+'%</div></div>'
+          + '</div>'
+          + (ov.total === 0 ? '<span style="font-size:10px;color:#dc2626;font-weight:700;">⚠️ 0 tx</span>' : '')
+        + '</div>'
+        + '<div style="height:4px;background:var(--surface2);border-radius:2px;margin-bottom:8px;"><div style="height:100%;width:'+pct+'%;background:'+shiftClr+';border-radius:2px;"></div></div>'
+        + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+          + (ov.masuk  ? '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#16a34a15;color:#16a34a;font-weight:700;">↓ '+ov.masuk+' masuk</span>'  : '')
+          + (ov.keluar ? '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#dc262615;color:#dc2626;font-weight:700;">↑ '+ov.keluar+' keluar</span>' : '')
+          + (ov.pindah ? '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#2563eb15;color:#2563eb;font-weight:700;">⇄ '+ov.pindah+' pindah</span>' : '')
+        + '</div>'
+      + '</div>';
+    });
+  }
+
+  // Per SKU summary
+  var skuKeys = Object.keys(d.bySku || {});
+  if (skuKeys.length) {
+    skuKeys.sort(function(a,b) {
+      var sa = d.bySku[a], sb = d.bySku[b];
+      return (sb.pltMasuk+sb.pltKeluar+sb.pltPindah) - (sa.pltMasuk+sa.pltKeluar+sa.pltPindah);
+    });
+    html += '<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;">Per SKU</div>';
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">';
+    html += '<div style="display:grid;grid-template-columns:1fr 52px 52px 52px;gap:4px;padding:8px 12px;background:var(--surface2);font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;">'
+      + '<div>SKU</div><div style="text-align:center;color:#16a34a;">Masuk</div><div style="text-align:center;color:#dc2626;">Keluar</div><div style="text-align:center;color:#2563eb;">Pindah</div>'
+    + '</div>';
+    skuKeys.forEach(function(k) {
+      var s = d.bySku[k];
+      html += '<div style="display:grid;grid-template-columns:1fr 52px 52px 52px;gap:4px;padding:9px 12px;border-top:1px solid var(--border);align-items:center;">'
+        + '<div><div style="font-size:9px;color:var(--muted);font-family:var(--mono);">'+escHtml(s.kode)+'</div><div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.3;">'+escHtml(s.nama)+'</div></div>'
+        + '<div style="text-align:center;">'+_skuQtyCell(s.pltMasuk,  s.pecMasuk,  '#16a34a')+'</div>'
+        + '<div style="text-align:center;">'+_skuQtyCell(s.pltKeluar, s.pecKeluar, '#dc2626')+'</div>'
+        + '<div style="text-align:center;">'+_skuQtyCell(s.pltPindah, s.pecPindah, '#2563eb')+'</div>'
+      + '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Transaction list
+  if (d.txList && d.txList.length) {
+    html += '<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;">Riwayat Transaksi ('+d.txList.length+')</div>';
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0 14px;">';
+    d.txList.forEach(function(tx) {
+      var ac  = tx.aksi === 'MASUK' ? '#16a34a' : tx.aksi === 'KELUAR' ? '#dc2626' : '#2563eb';
+      var qty = tx.plt > 0 ? tx.plt+'p' : '';
+      if (tx.pec > 0) qty += (qty ? '+' : '') + tx.pec + 'ktn';
+      html += '<div class="shift-tx-row">'
+        + '<span style="font-size:10px;color:var(--muted);width:34px;flex-shrink:0;">'+tx.ts+'</span>'
+        + '<span style="font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;background:'+ac+'18;color:'+ac+';flex-shrink:0;">'+tx.aksi+'</span>'
+        + '<span style="font-weight:700;font-size:11px;color:var(--text);background:var(--surface2);padding:1px 6px;border-radius:5px;flex-shrink:0;">'+escHtml(tx.bin)+'</span>'
+        + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);">'+escHtml(tx.nama)+'</span>'
+        + '<span style="font-size:10px;color:var(--muted);flex-shrink:0;">'+(qty||'—')+'</span>'
+        + '<span style="font-size:10px;font-weight:700;color:'+shiftClr+';flex-shrink:0;margin-left:4px;">'+escHtml(tx.op)+'</span>'
+      + '</div>';
+    });
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
 }
 
 // ═══════════════════════════════════════
