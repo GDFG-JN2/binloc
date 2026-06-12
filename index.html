@@ -419,6 +419,15 @@ input:focus, select:focus {
   border-style: dashed !important;
 }
 .search-card:hover { border-color: var(--accent3) !important; }
+/* ── TIMELINE POPUP ── */
+#timeline-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;backdrop-filter:blur(3px);padding:20px;overflow-y:auto; }
+#timeline-popup { max-width:440px;margin:auto;background:var(--surface);border-radius:18px;overflow:hidden; }
+.tl-header { padding:16px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start; }
+.tl-row { display:flex;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border); }
+.tl-row:last-child { border-bottom:none; }
+.tl-dot { width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:2px; }
+.tl-line { position:relative; }
+.tl-line::before { content:'';position:absolute;left:15px;top:44px;bottom:-12px;width:2px;background:var(--border); }
 
 .scan-card::before { background: linear-gradient(135deg, #0ea5e910, #06b6d408); }
 .scan-card:hover { border-color: #0ea5e9 !important; }
@@ -2753,7 +2762,7 @@ function renderSearchResults(data) {
     var palletLabel = eff + ' plt' + (pec > 0 ? ' efektif' : '');
     var qt = r.quotation ? '<span class="rc-tag">' + r.quotation + '</span>' : '';
     var pd = r.prodate   ? '<span class="rc-tag">' + r.prodate + '</span>'   : '';
-    return '<div class="result-card">'
+    return '<div class="result-card" onclick="showTimeline(\'' + escHtml(r.binLoc) + '\',\'' + escHtml(r.skuKode) + '\',\'' + escHtml(r.skuNama) + '\')" style="cursor:pointer;">'
       + '<div class="rc-bin">' + r.binLoc + '</div>'
       + '<div class="rc-info">'
       + '<div class="rc-sku">' + r.skuKode + '</div>'
@@ -3205,6 +3214,77 @@ function renderShiftReport(d) {
     });
     html += '</div>';
   }
+
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════
+// TIMELINE POPUP — riwayat SKU per bin
+// ═══════════════════════════════════════
+function showTimeline(bin, kode, nama) {
+  document.getElementById('tl-bin').textContent  = bin;
+  document.getElementById('tl-kode').textContent = kode;
+  document.getElementById('tl-nama').textContent = nama;
+  document.getElementById('tl-body').innerHTML   =
+    '<div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">⏳ Memuat...</div>';
+  document.getElementById('timeline-overlay').style.display = 'block';
+  gasCall('getMovementBySku', { bin: bin, kode: kode }, function(data) {
+    renderTimeline(data);
+  }, function() {
+    document.getElementById('tl-body').innerHTML =
+      '<div style="color:#ef4444;padding:20px;font-size:13px;">❌ Gagal memuat data</div>';
+  });
+}
+
+function closeTimeline() {
+  document.getElementById('timeline-overlay').style.display = 'none';
+}
+
+function renderTimeline(d) {
+  var el = document.getElementById('tl-body');
+  if (!d || !d.ok || !d.rows.length) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">📭 Belum ada riwayat movement</div>';
+    return;
+  }
+
+  var aksiCfg = {
+    MASUK:  { icon:'⬇️', color:'#16a34a', bg:'#f0fdf4', label:'Masuk' },
+    KELUAR: { icon:'⬆️', color:'#dc2626', bg:'#fef2f2', label:'Keluar' },
+    PINDAH: { icon:'⇄',  color:'#2563eb', bg:'#eff6ff', label:'Pindah' }
+  };
+
+  var html = '';
+  d.rows.forEach(function(r, idx) {
+    var cfg  = aksiCfg[r.aksi] || { icon:'•', color:'#6b7280', bg:'var(--surface2)', label:r.aksi };
+    var isLast = idx === d.rows.length - 1;
+    var qtyParts = [];
+    if (r.pallet  > 0) qtyParts.push(r.pallet + ' plt');
+    if (r.pecahan > 0) qtyParts.push(r.pecahan + ' ktn pecahan');
+    var qty = qtyParts.join(' + ') || (r.karton + ' ktn');
+
+    // Untuk PINDAH: tunjukkan arah
+    var arahStr = '';
+    if (r.aksi === 'PINDAH') {
+      if (r.binTujuan === d.bin) arahStr = '<span style="font-size:10px;color:#2563eb;">dari ' + r.bin + ' → <b>' + r.binTujuan + '</b></span>';
+      else                       arahStr = '<span style="font-size:10px;color:#2563eb;"><b>' + r.bin + '</b> → ' + r.binTujuan + '</span>';
+    }
+
+    html += '<div class="tl-row' + (!isLast ? ' tl-line' : '') + '">'
+      + '<div class="tl-dot" style="background:' + cfg.bg + ';color:' + cfg.color + ';">' + cfg.icon + '</div>'
+      + '<div style="flex:1;min-width:0;">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+          + '<span style="font-size:12px;font-weight:800;color:' + cfg.color + ';">' + cfg.label + '</span>'
+          + '<span style="font-size:10px;color:var(--muted);">' + r.ts + '</span>'
+        + '</div>'
+        + (arahStr ? '<div style="margin-top:2px;">' + arahStr + '</div>' : '')
+        + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">'
+          + '<span style="font-size:10px;color:var(--muted);background:var(--surface2);padding:1px 7px;border-radius:4px;">' + qty + '</span>'
+          + (r.operator ? '<span style="font-size:10px;color:var(--muted);">👤 ' + escHtml(r.operator) + '</span>' : '')
+          + (r.keterangan ? '<span style="font-size:10px;color:var(--muted);font-style:italic;">' + escHtml(r.keterangan) + '</span>' : '')
+        + '</div>'
+      + '</div>'
+    + '</div>';
+  });
 
   el.innerHTML = html;
 }
@@ -4322,6 +4402,21 @@ window.addEventListener('load', function() {
 });
 
 </script>
+
+<!-- Timeline Popup -->
+<div id="timeline-overlay" onclick="if(event.target===this)closeTimeline()">
+  <div id="timeline-popup">
+    <div class="tl-header">
+      <div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono);" id="tl-kode"></div>
+        <div style="font-size:15px;font-weight:800;color:var(--text);" id="tl-nama"></div>
+        <div style="font-size:12px;color:var(--accent);font-weight:700;margin-top:2px;">📍 <span id="tl-bin"></span></div>
+      </div>
+      <button onclick="closeTimeline()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;padding:0;line-height:1;">✕</button>
+    </div>
+    <div id="tl-body" style="max-height:60vh;overflow-y:auto;padding-bottom:8px;"></div>
+  </div>
+</div>
 
 <!-- Modal Edit Kapasitas -->
 <div id="cap-editor-overlay" onclick="if(event.target===this)closeCapEditor()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;backdrop-filter:blur(4px);overflow-y:auto;padding:20px;">
