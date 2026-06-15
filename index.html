@@ -2457,35 +2457,88 @@ function petaColorClass(used, cap) {
   return 'peta-brown';
 }
 
+var _capEditorCfg = [];
+
 function openCapEditor() {
+  // Clone ke working copy
+  _capEditorCfg = PETA_CAP_CFG.map(function(c){ return {l:c.l,f:c.f,t:c.t,c:c.c}; });
+  _renderCapEditor();
+  document.getElementById('cap-editor-overlay').style.display = 'block';
+}
+
+function _renderCapEditor() {
   var body = document.getElementById('cap-editor-body');
-  // Group by row letter
   var groups = {};
-  PETA_CAP_CFG.forEach(function(c) {
+  _capEditorCfg.forEach(function(c, idx) {
     if (!groups[c.l]) groups[c.l] = [];
-    groups[c.l].push(c);
+    groups[c.l].push({ cfg: c, idx: idx });
   });
+
   var html = '';
   Object.keys(groups).sort().forEach(function(L) {
-    html += '<div style="margin-bottom:14px;">'
-      + '<div style="font-size:11px;font-weight:800;color:#2563eb;margin-bottom:6px;">ROW ' + L + '</div>';
-    groups[L].forEach(function(c, i) {
-      var id = 'cap-' + L + '-' + i;
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px;background:var(--surface2);border-radius:8px;padding:8px;">'
-        + '<div style="font-size:11px;color:var(--muted);">Bin ' + L + c.f + (c.f===c.t?'':' – '+L+c.t) + '</div>'
-        + '<div><div style="font-size:9px;color:var(--muted);margin-bottom:2px;">Dari–Sampai</div>'
-        + '<div style="display:flex;gap:4px;">'
-        + '<input type="number" id="' + id + '-f" value="' + c.f + '" min="1" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;text-align:center;">'
-        + '<input type="number" id="' + id + '-t" value="' + c.t + '" min="1" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;text-align:center;">'
-        + '</div></div>'
-        + '<div><div style="font-size:9px;color:var(--muted);margin-bottom:2px;">Kapasitas (plt)</div>'
-        + '<input type="number" id="' + id + '-c" value="' + c.c + '" min="1" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;text-align:center;font-weight:700;">'
-        + '</div></div>';
+    var grp = groups[L];
+    html += '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:800;color:#2563eb;margin-bottom:8px;">ROW ' + L + '</div>';
+
+    grp.forEach(function(item) {
+      var c   = item.cfg;
+      var idx = item.idx;
+      var canSplit  = c.t > c.f;
+      var canDelete = grp.length > 1;
+
+      html += '<div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:8px;border:1px solid var(--border);">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+          + '<span style="font-size:11px;color:var(--muted);">'
+            + L + c.f + (c.f === c.t ? '' : ' – ' + L + c.t)
+          + '</span>'
+          + '<div style="display:flex;gap:6px;">'
+            + (canSplit  ? '<button onclick="splitCapRange('+idx+')" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px solid #f59e0b60;background:#f59e0b15;color:#d97706;cursor:pointer;font-weight:700;">✂️ Pecah</button>' : '')
+            + (canDelete ? '<button onclick="deleteCapRange('+idx+')" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px solid #ef444460;background:#ef444415;color:#dc2626;cursor:pointer;font-weight:700;">🗑</button>' : '')
+          + '</div>'
+        + '</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">'
+          + '<div><div style="font-size:9px;color:var(--muted);margin-bottom:3px;">Dari</div>'
+            + '<input type="number" id="cap-f-'+idx+'" value="'+c.f+'" min="1" oninput="_capSync('+idx+')" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;text-align:center;box-sizing:border-box;"></div>'
+          + '<div><div style="font-size:9px;color:var(--muted);margin-bottom:3px;">Sampai</div>'
+            + '<input type="number" id="cap-t-'+idx+'" value="'+c.t+'" min="1" oninput="_capSync('+idx+')" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:13px;text-align:center;box-sizing:border-box;"></div>'
+          + '<div><div style="font-size:9px;color:var(--muted);margin-bottom:3px;">Kapasitas</div>'
+            + '<input type="number" id="cap-c-'+idx+'" value="'+c.c+'" min="1" oninput="_capSync('+idx+')" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:14px;text-align:center;font-weight:700;box-sizing:border-box;"></div>'
+        + '</div>'
+      + '</div>';
     });
     html += '</div>';
   });
   body.innerHTML = html;
-  document.getElementById('cap-editor-overlay').style.display = 'block';
+}
+
+function _capSync(idx) {
+  var fEl = document.getElementById('cap-f-' + idx);
+  var tEl = document.getElementById('cap-t-' + idx);
+  var cEl = document.getElementById('cap-c-' + idx);
+  if (!_capEditorCfg[idx]) return;
+  if (fEl) _capEditorCfg[idx].f = parseInt(fEl.value) || _capEditorCfg[idx].f;
+  if (tEl) _capEditorCfg[idx].t = parseInt(tEl.value) || _capEditorCfg[idx].t;
+  if (cEl) _capEditorCfg[idx].c = parseInt(cEl.value) || _capEditorCfg[idx].c;
+}
+
+function splitCapRange(idx) {
+  _capSync(idx);
+  var c = _capEditorCfg[idx];
+  if (c.t <= c.f) { showToast('Range terlalu kecil untuk dipecah'); return; }
+  var mid      = c.f + Math.floor((c.t - c.f) / 2);
+  var splitAt  = parseInt(prompt('Pecah di angka berapa?\n(Range: ' + c.l + c.f + ' – ' + c.l + c.t + ')\n\nRange bawah: ' + c.l + c.f + ' – ' + c.l + 'X\nRange atas:  ' + c.l + '(X+1) – ' + c.l + c.t, mid));
+  if (isNaN(splitAt) || splitAt < c.f || splitAt >= c.t) {
+    showToast('Angka tidak valid'); return;
+  }
+  var upper = { l: c.l, f: splitAt + 1, t: c.t, c: c.c };
+  c.t = splitAt;
+  _capEditorCfg.splice(idx + 1, 0, upper);
+  _renderCapEditor();
+}
+
+function deleteCapRange(idx) {
+  _capEditorCfg.splice(idx, 1);
+  _renderCapEditor();
 }
 
 function closeCapEditor() {
@@ -2493,26 +2546,18 @@ function closeCapEditor() {
 }
 
 function saveCapEditor() {
-  var groups = {};
-  PETA_CAP_CFG.forEach(function(c) {
-    if (!groups[c.l]) groups[c.l] = [];
-    groups[c.l].push(c);
+  // Sync semua DOM values ke _capEditorCfg sebelum save
+  _capEditorCfg.forEach(function(c, idx) {
+    var fEl = document.getElementById('cap-f-' + idx);
+    var tEl = document.getElementById('cap-t-' + idx);
+    var cEl = document.getElementById('cap-c-' + idx);
+    if (fEl) c.f = parseInt(fEl.value) || c.f;
+    if (tEl) c.t = parseInt(tEl.value) || c.t;
+    if (cEl) c.c = parseInt(cEl.value) || c.c;
   });
-  var idx = 0;
-  var newCfg = [];
-  Object.keys(groups).sort().forEach(function(L) {
-    groups[L].forEach(function(c, i) {
-      var id  = 'cap-' + L + '-' + i;
-      var f   = parseInt(document.getElementById(id + '-f').value) || c.f;
-      var t   = parseInt(document.getElementById(id + '-t').value) || c.t;
-      var cap = parseInt(document.getElementById(id + '-c').value) || c.c;
-      newCfg.push({ l: L, f: f, t: t, c: cap });
-    });
-  });
-  PETA_CAP_CFG = newCfg;
+  PETA_CAP_CFG = _capEditorCfg.slice();
   closeCapEditor();
   petaRefresh();
-  // Simpan ke sheet supaya konsisten antar device
   gasCall('saveBinCapConfig', { cfg: PETA_CAP_CFG }, function() {
     showToast('✅ Kapasitas disimpan');
   }, function() {
