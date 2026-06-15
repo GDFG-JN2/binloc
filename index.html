@@ -2512,7 +2512,12 @@ function saveCapEditor() {
   PETA_CAP_CFG = newCfg;
   closeCapEditor();
   petaRefresh();
-  showToast('✅ Kapasitas disimpan');
+  // Simpan ke sheet supaya konsisten antar device
+  gasCall('saveBinCapConfig', { cfg: PETA_CAP_CFG }, function() {
+    showToast('✅ Kapasitas disimpan');
+  }, function() {
+    showToast('⚠️ Kapasitas diupdate lokal, gagal simpan ke server');
+  });
 }
 
 function petaRefresh() {
@@ -2525,6 +2530,17 @@ function petaLoadMap() {
   if (_petaLoaded && _petaData) { petaRenderMap(_petaData); return; }
   document.getElementById('peta-map-wrap').innerHTML =
     '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px"><div style="font-size:28px;margin-bottom:8px">⏳</div>Memuat data...</div>';
+
+  // Load cap config dari sheet dulu supaya konsisten antar device
+  gasCall('getBinCapConfig', {}, function(capResult) {
+    if (capResult && capResult.cfg && capResult.cfg.length) PETA_CAP_CFG = capResult.cfg;
+    _petaFetchData();
+  }, function() {
+    _petaFetchData(); // gagal → pakai default hardcoded
+  });
+}
+
+function _petaFetchData() {
   gasCall('getBinCurrentLite', null,
     function(data) {
       _petaData   = data || [];
@@ -2762,7 +2778,7 @@ function renderSearchResults(data) {
     var palletLabel = eff + ' plt' + (pec > 0 ? ' efektif' : '');
     var qt = r.quotation ? '<span class="rc-tag">' + r.quotation + '</span>' : '';
     var pd = r.prodate   ? '<span class="rc-tag">' + r.prodate + '</span>'   : '';
-    return '<div class="result-card" onclick="showTimeline(\'' + escHtml(r.binLoc) + '\',\'' + escHtml(r.skuKode) + '\',\'' + escHtml(r.skuNama) + '\')" style="cursor:pointer;">'
+    return '<div class="result-card" onclick="showTimeline(\'' + escHtml(r.binLoc) + '\',\'' + escHtml(r.skuKode) + '\',\'' + escHtml(r.skuNama) + '\',' + eff + ',' + pec + ',\'' + escHtml(r.prodate||'') + '\')" style="cursor:pointer;">'
       + '<div class="rc-bin">' + r.binLoc + '</div>'
       + '<div class="rc-info">'
       + '<div class="rc-sku">' + r.skuKode + '</div>'
@@ -3221,10 +3237,18 @@ function renderShiftReport(d) {
 // ═══════════════════════════════════════
 // TIMELINE POPUP — riwayat SKU per bin
 // ═══════════════════════════════════════
-function showTimeline(bin, kode, nama) {
+function showTimeline(bin, kode, nama, eff, pec, prodate) {
   document.getElementById('tl-bin').textContent  = bin;
   document.getElementById('tl-kode').textContent = kode;
   document.getElementById('tl-nama').textContent = nama;
+
+  // Qty label
+  var qtyLabel = (eff || 0) + ' plt' + ((pec > 0) ? ' + ' + pec + ' ktn' : '');
+  var tlBinRow = document.getElementById('tl-bin-row');
+  tlBinRow.innerHTML =
+    '<span style="color:var(--accent);font-weight:700;">📍 ' + escHtml(bin) + '</span>'
+    + '<span style="color:var(--muted);font-size:11px;">' + qtyLabel + '</span>'
+    + (prodate ? '<span style="color:var(--muted);font-size:11px;">' + escHtml(prodate) + '</span>' : '');
   document.getElementById('tl-body').innerHTML   =
     '<div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">⏳ Memuat...</div>';
   document.getElementById('timeline-overlay').style.display = 'block';
@@ -4410,7 +4434,9 @@ window.addEventListener('load', function() {
       <div>
         <div style="font-size:11px;color:var(--muted);font-family:var(--mono);" id="tl-kode"></div>
         <div style="font-size:15px;font-weight:800;color:var(--text);" id="tl-nama"></div>
-        <div style="font-size:12px;color:var(--accent);font-weight:700;margin-top:2px;">📍 <span id="tl-bin"></span></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;" id="tl-bin-row">
+          <span style="color:var(--accent);font-weight:700;">📍 <span id="tl-bin"></span></span>
+        </div>
       </div>
       <button onclick="closeTimeline()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;padding:0;line-height:1;">✕</button>
     </div>
