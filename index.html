@@ -1329,6 +1329,7 @@ input:focus, select:focus {
       <div id="std-info" style="display:none;font-size:11px;color:var(--muted);margin-bottom:8px;padding:6px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
         <span id="std-info-text"></span>
         <span id="stok-info" style="display:none;margin-left:12px;color:#1d4ed8;font-weight:700"></span>
+        <div id="masuk-cap-info" style="display:none;font-size:11px;margin-top:6px;padding:6px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);"></div>
       </div>
       <!-- Warning STD tidak ada + input manual -->
       <div id="std-warn" style="display:none;margin-bottom:12px;">
@@ -2127,7 +2128,9 @@ function pilihProdateChip(el) {
 function showStokInfo(pallet, karton, pecList) {
   var el = document.getElementById('stok-info');
   if (!el) return;
-  if (state.aksi !== 'MASUK') {
+  if (state.aksi === 'MASUK') {
+    el.style.display = 'none';
+  } else {
     var maxPec = (pecList||[]).reduce(function(a,b){return a+b;},0);
     var _pdSi  = { pallet: pallet, pecahan: maxPec, pecahan_list: pecList||[], karton: karton };
     var txt    = 'Tersedia: ' + pecStr(_pdSi, true) + ' · ' + pecEff(_pdSi) + 'p efektif';
@@ -2238,18 +2241,39 @@ function updateSubmitState() {
   if (state.aksi === 'PINDAH') ok = ok && state.binTujuan;
 
   if (state.aksi && state.aksi !== 'MASUK') {
-    // Wajib ada prodate yang valid (dari chips)
     var prodate = document.getElementById('f-prodate').value;
     if (!prodate || !state.selectedProdate) ok = false;
-    // Blok jika tidak ada stok sama sekali
     else if (state.maxKarton === 0) ok = false;
-    // Blok jika total karton melebihi stok
     else if (state.maxKarton > 0) {
       var totalKarton = parseInt(document.getElementById('f-total-karton').value) || 0;
       if (totalKarton > state.maxKarton) ok = false;
     }
   }
+
+  // Cek kapasitas bin untuk MASUK — blok jika sudah >= 110%
+  if (state.aksi === 'MASUK' && state.binLoc && ok) {
+    var capInfo = _checkBinCapacity();
+    var capEl   = document.getElementById('masuk-cap-info');
+    if (capEl && capInfo.cap > 0) {
+      var pct = Math.round(capInfo.afterUsed / capInfo.cap * 100);
+      var clr = pct >= 110 ? '#dc2626' : pct >= 100 ? '#ea580c' : pct >= 75 ? '#d97706' : '#16a34a';
+      capEl.innerHTML = 'Kapasitas bin: <b style="color:' + clr + ';">' + capInfo.afterUsed + ' / ' + capInfo.cap + ' plt (' + pct + '%)</b>';
+      capEl.style.display = 'block';
+      if (capInfo.afterUsed > capInfo.cap * 1.1) ok = false;
+    } else if (capEl) { capEl.style.display = 'none'; }
+  }
+
   document.getElementById('submit-btn').disabled = !ok;
+}
+
+function _checkBinCapacity() {
+  var cap        = petaCapacity(state.binLoc || '');
+  var curUsed    = binSkuData.reduce(function(s, r) { return s + pecEff(r); }, 0);
+  var newPlt     = parseInt(document.getElementById('f-pallet').value) || 0;
+  var newPec     = parseInt(document.getElementById('f-pecahan').value) || 0;
+  var newEff     = newPlt + (newPec > 0 ? 1 : 0);
+  var afterUsed  = curUsed + newEff;
+  return { cap: cap, curUsed: curUsed, afterUsed: afterUsed };
 }
 
 function submitForm() {
@@ -2263,6 +2287,15 @@ function submitForm() {
   if (pallet > 0 && !state.std)  { showToast('❌ STD belum diisi — isi STD manual dulu'); return; }
   if (!prodate) { showToast('⚠️ Isi tanggal prodate'); return; }
   if (state.tipe === 'EKSPOR' && !quotation) { showToast('⚠️ Isi nomor quotation'); return; }
+
+  // Blok MASUK jika bin sudah >= 110% kapasitas
+  if (state.aksi === 'MASUK') {
+    var capCheck = _checkBinCapacity();
+    if (capCheck.cap > 0 && capCheck.afterUsed > capCheck.cap * 1.1) {
+      showToast('🚫 Bin ' + state.binLoc + ' sudah ' + Math.round(capCheck.curUsed / capCheck.cap * 100) + '% penuh — tidak bisa masuk barang lagi', 4000);
+      return;
+    }
+  }
 
   // Validasi prodate untuk KELUAR/PINDAH — harus ada di stok bin
   if (state.aksi !== 'MASUK' && binSkuData.length) {
