@@ -2525,13 +2525,9 @@ function splitCapRange(idx) {
   _capSync(idx);
   var c = _capEditorCfg[idx];
   if (c.t <= c.f) { showToast('Range terlalu kecil untuk dipecah'); return; }
-  var mid      = c.f + Math.floor((c.t - c.f) / 2);
-  var splitAt  = parseInt(prompt('Pecah di angka berapa?\n(Range: ' + c.l + c.f + ' – ' + c.l + c.t + ')\n\nRange bawah: ' + c.l + c.f + ' – ' + c.l + 'X\nRange atas:  ' + c.l + '(X+1) – ' + c.l + c.t, mid));
-  if (isNaN(splitAt) || splitAt < c.f || splitAt >= c.t) {
-    showToast('Angka tidak valid'); return;
-  }
-  var upper = { l: c.l, f: splitAt + 1, t: c.t, c: c.c };
-  c.t = splitAt;
+  var mid   = c.f + Math.floor((c.t - c.f) / 2);
+  var upper = { l: c.l, f: mid + 1, t: c.t, c: c.c };
+  c.t = mid;
   _capEditorCfg.splice(idx + 1, 0, upper);
   _renderCapEditor();
 }
