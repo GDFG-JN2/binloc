@@ -3310,14 +3310,12 @@ function renderShiftReport(d) {
 // TIMELINE POPUP — riwayat SKU per bin
 // ═══════════════════════════════════════
 function showTimeline(bin, kode, nama, eff, pec, prodate) {
-  document.getElementById('tl-bin').textContent  = bin;
   document.getElementById('tl-kode').textContent = kode;
   document.getElementById('tl-nama').textContent = nama;
 
-  // Qty label
+  // Qty label — rebuild tl-bin-row setiap kali (tidak simpan reference ke child lama)
   var qtyLabel = (eff || 0) + ' plt' + ((pec > 0) ? ' + ' + pec + ' ktn' : '');
-  var tlBinRow = document.getElementById('tl-bin-row');
-  tlBinRow.innerHTML =
+  document.getElementById('tl-bin-row').innerHTML =
     '<span style="color:var(--accent);font-weight:700;">📍 ' + escHtml(bin) + '</span>'
     + '<span style="color:var(--muted);font-size:11px;">' + qtyLabel + '</span>'
     + (prodate ? '<span style="color:var(--muted);font-size:11px;">' + escHtml(prodate) + '</span>' : '');
@@ -4506,9 +4504,7 @@ window.addEventListener('load', function() {
       <div>
         <div style="font-size:11px;color:var(--muted);font-family:var(--mono);" id="tl-kode"></div>
         <div style="font-size:15px;font-weight:800;color:var(--text);" id="tl-nama"></div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;" id="tl-bin-row">
-          <span style="color:var(--accent);font-weight:700;">📍 <span id="tl-bin"></span></span>
-        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;" id="tl-bin-row"></div>
       </div>
       <button onclick="closeTimeline()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;padding:0;line-height:1;">✕</button>
     </div>
