@@ -599,6 +599,11 @@ input:focus, select:focus {
       <div class="card-label" style="color:#0ea5e9">Scan QR</div>
       <div class="card-desc">Scan QR Code — Transaksi & Opname</div>
     </div>
+    <div class="tipe-card" style="border-color:#9333ea40;background:#9333ea08;" onclick="openOpnameFifo()">
+      <div class="card-icon">📋</div>
+      <div class="card-label" style="color:#9333ea">Stock Opname</div>
+      <div class="card-desc">Input opname FIFO — tabel multi-baris</div>
+    </div>
 
   </div>
 
@@ -1395,6 +1400,84 @@ input:focus, select:focus {
     <button class="btn-next primary" onclick="lanjutScanBaru()">📦 Input Bin Baru</button>
     <button class="btn-next secondary" onclick="lanjutBinSama()">↩ Bin Sama, Transaksi Baru</button>
     <button class="btn-next secondary" onclick="goHome()">🏠 Kembali ke Awal</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SCREEN: STOCK OPNAME FIFO
+═══════════════════════════════ -->
+<div class="screen" id="screen-opname-fifo">
+  <div class="app-header">
+    <button class="back-btn" onclick="showScreen('screen-tipe')">←</button>
+    <div class="title-group"><h2>Stock Opname</h2><div class="sub">Input opname FIFO</div></div>
+    <button onclick="openOpnameRiwayat()" style="background:none;border:1px solid var(--border);border-radius:10px;padding:7px 12px;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;">📜 Riwayat</button>
+  </div>
+
+  <div style="padding:0 16px 100px;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;border:1px solid var(--border);">
+      <table style="border-collapse:collapse;width:100%;min-width:920px;font-size:12px;">
+        <thead>
+          <tr style="background:var(--surface2);">
+            <th style="padding:8px 6px;text-align:center;width:32px;color:var(--muted);font-size:10px;">No</th>
+            <th style="padding:8px 6px;text-align:left;width:180px;color:var(--muted);font-size:10px;">SKU</th>
+            <th style="padding:8px 6px;text-align:left;width:160px;color:var(--muted);font-size:10px;">Nama Barang</th>
+            <th style="padding:8px 6px;text-align:center;width:60px;color:var(--muted);font-size:10px;">STD</th>
+            <th style="padding:8px 6px;text-align:center;width:110px;color:var(--muted);font-size:10px;">Prodate</th>
+            <th style="padding:8px 6px;text-align:center;width:80px;color:var(--muted);font-size:10px;">Qty Acuan</th>
+            <th style="padding:8px 6px;text-align:center;width:110px;color:var(--muted);font-size:10px;">Qty Pallet</th>
+            <th style="padding:8px 6px;text-align:center;width:100px;color:var(--muted);font-size:10px;">Pecahan</th>
+            <th style="padding:8px 6px;text-align:center;width:70px;color:var(--muted);font-size:10px;">Total</th>
+            <th style="padding:8px 6px;text-align:center;width:80px;color:var(--muted);font-size:10px;">Ket</th>
+            <th style="padding:8px 6px;width:28px;"></th>
+          </tr>
+        </thead>
+        <tbody id="of-tbody"></tbody>
+      </table>
+    </div>
+
+    <button onclick="ofAddRow()" style="margin-top:12px;width:100%;padding:11px;border-radius:10px;border:1px dashed var(--border);background:var(--surface2);color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;">➕ Tambah Baris</button>
+
+    <div style="margin-top:16px;">
+      <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Nama Operator</label>
+      <input type="text" id="of-operator-input" placeholder="Tulis nama operator..." oninput="ofOperator = this.value.trim()" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+    </div>
+
+    <button onclick="ofSave()" id="of-save-btn" style="margin-top:18px;width:100%;padding:14px;border-radius:12px;border:none;background:#9333ea;color:#fff;font-size:14px;font-weight:800;cursor:pointer;">💾 Simpan Opname</button>
+  </div>
+</div>
+
+<!-- SKU Search Modal untuk Opname FIFO -->
+<div id="of-sku-overlay" onclick="if(event.target===this)ofCloseSkuModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;padding:20px;overflow-y:auto;">
+  <div style="max-width:420px;margin:auto;background:var(--surface);border-radius:16px;overflow:hidden;">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+      <input type="text" id="of-sku-search-input" placeholder="Cari kode / nama SKU..." oninput="ofFilterSku()" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box;">
+    </div>
+    <div id="of-sku-search-results" style="max-height:50vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- Riwayat Opname FIFO -->
+<div id="of-riwayat-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;padding:20px;overflow-y:auto;">
+  <div style="max-width:480px;margin:auto;background:var(--surface);border-radius:16px;overflow:hidden;">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-weight:800;font-size:15px;">📜 Riwayat Opname</div>
+      <button onclick="closeOpnameRiwayat()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;">✕</button>
+    </div>
+    <div id="of-riwayat-list" style="max-height:70vh;overflow-y:auto;padding:12px;"></div>
+  </div>
+</div>
+
+<!-- Detail Sesi Opname (drill-down dari Riwayat) -->
+<div id="of-detail-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1001;padding:20px;overflow-y:auto;">
+  <div style="max-width:520px;margin:auto;background:var(--surface);border-radius:16px;overflow:hidden;">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-weight:800;font-size:14px;" id="of-detail-title">Sesi Opname</div>
+        <div style="font-size:11px;color:var(--muted);" id="of-detail-sub"></div>
+      </div>
+      <button onclick="document.getElementById('of-detail-overlay').style.display='none'" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;">✕</button>
+    </div>
+    <div id="of-detail-body" style="max-height:65vh;overflow-y:auto;padding:0 4px;"></div>
   </div>
 </div>
 
@@ -3381,6 +3464,231 @@ function renderTimeline(d) {
   });
 
   el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════
+// STOCK OPNAME FIFO
+// ═══════════════════════════════════════
+var ofRows        = [];   // { no, kode, nama, std, prodate, qtyAcuan, pltStr, pecStr }
+var ofActiveRowIdx = null; // baris yang sedang cari SKU
+var ofOperator     = null;
+
+function openOpnameFifo() {
+  ofRows = [];
+  ofOperator = null;
+  document.getElementById('of-operator-input').value = '';
+  ofAddRow();
+  showScreen('screen-opname-fifo');
+}
+
+function ofAddRow() {
+  var last = ofRows[ofRows.length - 1];
+  var inherited = (last && last.kode)
+    ? { kode: last.kode, nama: last.nama, std: last.std }
+    : { kode: '', nama: '', std: 0 };
+  ofRows.push({
+    no: ofRows.length + 1,
+    kode: inherited.kode, nama: inherited.nama, std: inherited.std,
+    prodate: '', qtyAcuan: 0, pltStr: '', pecStr: ''
+  });
+  ofRenderRows();
+}
+
+function ofDeleteRow(idx) {
+  ofRows.splice(idx, 1);
+  ofRows.forEach(function(r, i) { r.no = i + 1; });
+  ofRenderRows();
+}
+
+function _ofCalc(r) {
+  var pltList = String(r.pltStr||'').split(',').map(function(x){ return parseInt(x.trim())||0; }).filter(function(n){ return n>0; });
+  var pecList = String(r.pecStr||'').split(',').map(function(x){ return parseInt(x.trim())||0; }).filter(function(n){ return n>0; });
+  var pltSum  = pltList.reduce(function(a,b){return a+b;},0);
+  var pecSum  = pecList.reduce(function(a,b){return a+b;},0);
+  var total   = pltSum * (Number(r.std)||0) + pecSum;
+  var acuan   = Number(r.qtyAcuan)||0;
+  var selisih = total - acuan;
+  var ket = selisih === 0 ? 'OK' : (selisih > 0 ? '+' + selisih : String(selisih));
+  return { pltSum: pltSum, pecSum: pecSum, total: total, selisih: selisih, ket: ket };
+}
+
+function ofRenderRows() {
+  var tbody = document.getElementById('of-tbody');
+  tbody.innerHTML = ofRows.map(function(r, idx) {
+    var calc = _ofCalc(r);
+    var ketColor = calc.ket === 'OK' ? '#16a34a' : (calc.selisih > 0 ? '#2563eb' : '#dc2626');
+    var skuLabel = r.kode ? (r.kode) : '';
+    return '<tr style="border-top:1px solid var(--border);">'
+      + '<td style="padding:6px;text-align:center;color:var(--muted);">' + r.no + '</td>'
+      + '<td style="padding:6px;"><div onclick="ofOpenSkuModal(' + idx + ')" style="padding:7px 8px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);cursor:pointer;color:' + (r.kode?'var(--text)':'var(--muted)') + ';font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;">' + (skuLabel || 'Pilih SKU...') + '</div></td>'
+      + '<td style="padding:6px;color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(r.nama||'—') + '</td>'
+      + '<td style="padding:6px;"><input type="number" value="' + (r.std||'') + '" oninput="ofUpdateField(' + idx + ',\'std\',this.value)" style="width:54px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);text-align:center;"></td>'
+      + '<td style="padding:6px;"><input type="date" value="' + (r.prodate||'') + '" oninput="ofUpdateField(' + idx + ',\'prodate\',this.value)" style="width:100px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:11px;"></td>'
+      + '<td style="padding:6px;"><input type="number" value="' + (r.qtyAcuan||'') + '" oninput="ofUpdateField(' + idx + ',\'qtyAcuan\',this.value)" style="width:70px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);text-align:center;"></td>'
+      + '<td style="padding:6px;"><input type="text" placeholder="23,2,7" value="' + escHtml(r.pltStr||'') + '" oninput="ofUpdateField(' + idx + ',\'pltStr\',this.value)" style="width:100px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);text-align:center;"></td>'
+      + '<td style="padding:6px;"><input type="text" placeholder="5,3" value="' + escHtml(r.pecStr||'') + '" oninput="ofUpdateField(' + idx + ',\'pecStr\',this.value)" style="width:90px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);text-align:center;"></td>'
+      + '<td style="padding:6px;text-align:center;font-weight:800;">' + calc.total + '</td>'
+      + '<td style="padding:6px;text-align:center;font-weight:800;color:' + ketColor + ';">' + calc.ket + '</td>'
+      + '<td style="padding:6px;text-align:center;"><button onclick="ofDeleteRow(' + idx + ')" style="background:none;border:none;color:#dc2626;font-size:16px;cursor:pointer;padding:0;">🗑</button></td>'
+    + '</tr>';
+  }).join('');
+}
+
+function ofUpdateField(idx, field, val) {
+  if (!ofRows[idx]) return;
+  ofRows[idx][field] = val;
+  // Recalc & repaint hanya kolom total/ket tanpa rebuild seluruh row (hindari kehilangan fokus input)
+  var calc = _ofCalc(ofRows[idx]);
+  var tr = document.getElementById('of-tbody').children[idx];
+  if (tr) {
+    var ketColor = calc.ket === 'OK' ? '#16a34a' : (calc.selisih > 0 ? '#2563eb' : '#dc2626');
+    tr.children[8].textContent = calc.total;
+    tr.children[9].textContent = calc.ket;
+    tr.children[9].style.color = ketColor;
+  }
+}
+
+function ofOpenSkuModal(idx) {
+  ofActiveRowIdx = idx;
+  document.getElementById('of-sku-search-input').value = '';
+  document.getElementById('of-sku-search-results').innerHTML =
+    '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">Ketik untuk mencari...</div>';
+  document.getElementById('of-sku-overlay').style.display = 'block';
+  setTimeout(function(){ document.getElementById('of-sku-search-input').focus(); }, 150);
+}
+
+function ofCloseSkuModal() {
+  document.getElementById('of-sku-overlay').style.display = 'none';
+  ofActiveRowIdx = null;
+}
+
+function ofFilterSku() {
+  var q = document.getElementById('of-sku-search-input').value.trim().toLowerCase();
+  var resEl = document.getElementById('of-sku-search-results');
+  if (q.length < 1) { resEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">Ketik untuk mencari...</div>'; return; }
+  var matches = (skuData||[]).filter(function(m) {
+    return m.kode.toLowerCase().indexOf(q) >= 0 || m.nama.toLowerCase().indexOf(q) >= 0;
+  }).slice(0, 30);
+  if (!matches.length) { resEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">Tidak ditemukan</div>'; return; }
+  resEl.innerHTML = matches.map(function(m) {
+    return '<div onclick="ofSelectSku(\'' + m.kode + '\',\'' + escHtml(m.nama) + '\')" style="padding:10px 16px;border-top:1px solid var(--border);cursor:pointer;">'
+      + '<div style="font-size:11px;color:var(--muted);font-family:var(--mono);">' + m.kode + '</div>'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text);">' + escHtml(m.nama) + '</div>'
+    + '</div>';
+  }).join('');
+}
+
+function ofSelectSku(kode, nama) {
+  if (ofActiveRowIdx === null) return;
+  var idx = ofActiveRowIdx;
+  ofRows[idx].kode = kode;
+  ofRows[idx].nama = nama;
+  ofCloseSkuModal();
+  ofRenderRows();
+  // Auto-fill STD, masih bisa diedit manual
+  gasCall('getStdBySku', kode, function(std) {
+    if (ofRows[idx]) {
+      ofRows[idx].std = std > 0 ? std : 0;
+      ofRenderRows();
+    }
+  }, function() {});
+}
+
+function ofSave() {
+  var validRows = ofRows.filter(function(r) { return r.kode; });
+  if (!validRows.length) { showToast('⚠️ Belum ada SKU yang diisi'); return; }
+  if (!ofOperator) { showToast('⚠️ Isi nama operator dulu'); return; }
+
+  var payload = validRows.map(function(r) {
+    var calc = _ofCalc(r);
+    return {
+      no: r.no, kode: r.kode, nama: r.nama, std: r.std, prodate: r.prodate,
+      qtyAcuan: r.qtyAcuan, pltStr: r.pltStr, pltSum: calc.pltSum,
+      pecStr: r.pecStr, pecSum: calc.pecSum, total: calc.total, selisih: calc.selisih, ket: calc.ket
+    };
+  });
+
+  document.getElementById('of-save-btn').disabled = true;
+  document.getElementById('of-save-btn').textContent = 'Menyimpan...';
+
+  gasCall('saveOpnameFifo', { rows: payload, operator: ofOperator }, function(res) {
+    document.getElementById('of-save-btn').disabled = false;
+    document.getElementById('of-save-btn').textContent = '💾 Simpan Opname';
+    showToast('✅ ' + res.count + ' baris tersimpan');
+    ofRows = [];
+    ofOperator = null;
+    document.getElementById('of-operator-input').value = '';
+    ofAddRow();
+  }, function() {
+    document.getElementById('of-save-btn').disabled = false;
+    document.getElementById('of-save-btn').textContent = '💾 Simpan Opname';
+    showToast('❌ Gagal menyimpan');
+  });
+}
+
+// ── RIWAYAT OPNAME ──
+var ofHistoryData = null;
+
+function openOpnameRiwayat() {
+  document.getElementById('of-riwayat-overlay').style.display = 'block';
+  document.getElementById('of-riwayat-list').innerHTML =
+    '<div style="padding:30px;text-align:center;color:var(--muted);font-size:12px;">⏳ Memuat...</div>';
+  gasCall('getOpnameFifoHistory', {}, function(data) {
+    ofHistoryData = data;
+    ofRenderRiwayat(data);
+  }, function() {
+    document.getElementById('of-riwayat-list').innerHTML =
+      '<div style="padding:20px;color:#ef4444;font-size:13px;">❌ Gagal memuat riwayat</div>';
+  });
+}
+
+function closeOpnameRiwayat() {
+  document.getElementById('of-riwayat-overlay').style.display = 'none';
+}
+
+function ofRenderRiwayat(data) {
+  var el = document.getElementById('of-riwayat-list');
+  if (!data || !data.ok || !data.sessions.length) {
+    el.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:12px;">📭 Belum ada riwayat opname</div>';
+    return;
+  }
+  el.innerHTML = data.sessions.map(function(s, idx) {
+    var selColor = s.selisihCount > 0 ? '#dc2626' : '#16a34a';
+    var selLabel = s.selisihCount > 0 ? s.selisihCount + ' selisih' : 'Semua OK';
+    return '<div onclick="ofShowDetail(' + idx + ')" style="background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+        + '<div style="font-size:12px;font-weight:700;color:var(--text);">' + s.ts + '</div>'
+        + '<div style="font-size:10px;color:' + selColor + ';font-weight:800;background:' + selColor + '15;padding:2px 8px;border-radius:5px;">' + selLabel + '</div>'
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--muted);margin-top:4px;">' + s.rows.length + ' item · 👤 ' + escHtml(s.operator) + '</div>'
+    + '</div>';
+  }).join('');
+}
+
+function ofShowDetail(idx) {
+  var s = ofHistoryData.sessions[idx];
+  if (!s) return;
+  document.getElementById('of-detail-title').textContent = s.ts;
+  document.getElementById('of-detail-sub').textContent = s.rows.length + ' item · Operator ' + s.operator;
+  var body = document.getElementById('of-detail-body');
+  body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+    + '<thead><tr style="background:var(--surface2);">'
+      + '<th style="padding:6px;text-align:left;">SKU</th>'
+      + '<th style="padding:6px;text-align:center;">Acuan</th>'
+      + '<th style="padding:6px;text-align:center;">Total</th>'
+      + '<th style="padding:6px;text-align:center;">Ket</th>'
+    + '</tr></thead><tbody>'
+    + s.rows.map(function(r) {
+        var c = r.ket === 'OK' ? '#16a34a' : (Number(r.selisih) > 0 ? '#2563eb' : '#dc2626');
+        return '<tr style="border-top:1px solid var(--border);">'
+          + '<td style="padding:6px;"><div style="font-size:9px;color:var(--muted);font-family:var(--mono);">' + escHtml(r.kode) + '</div><div style="font-weight:700;">' + escHtml(r.nama) + '</div></td>'
+          + '<td style="padding:6px;text-align:center;">' + r.qtyAcuan + '</td>'
+          + '<td style="padding:6px;text-align:center;font-weight:800;">' + r.total + '</td>'
+          + '<td style="padding:6px;text-align:center;font-weight:800;color:' + c + ';">' + r.ket + '</td>'
+        + '</tr>';
+      }).join('')
+    + '</tbody></table>';
+  document.getElementById('of-detail-overlay').style.display = 'block';
 }
 
 // ═══════════════════════════════════════
