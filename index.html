@@ -1462,34 +1462,31 @@ input:focus, select:focus {
   </div>
 </div>
 
-<!-- Riwayat Opname FIFO -->
-<div id="of-riwayat-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;padding:20px;overflow-y:auto;">
-  <div style="max-width:480px;margin:auto;background:var(--surface);border-radius:16px;overflow:hidden;">
-    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-      <div style="font-weight:800;font-size:15px;">📜 Riwayat Opname</div>
-      <button onclick="closeOpnameRiwayat()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;">✕</button>
-    </div>
-    <div style="padding:10px 14px;border-bottom:1px solid var(--border);">
-      <input type="date" id="of-riwayat-filter-date" oninput="ofFilterRiwayatByDate()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box;">
-    </div>
-    <div id="of-riwayat-list" style="max-height:70vh;overflow-y:auto;padding:12px;"></div>
+<!-- ═══════════════════════════════
+     SCREEN: RIWAYAT OPNAME FIFO
+═══════════════════════════════ -->
+<div class="screen" id="screen-opname-riwayat">
+  <div class="app-header">
+    <div class="back-btn" onclick="showScreen('screen-opname-fifo')">←</div>
+    <div class="title-group"><h2>📜 Riwayat Opname</h2><div class="sub">Daftar sesi stock opname</div></div>
+  </div>
+  <div style="padding:14px 16px 100px;">
+    <input type="date" id="of-riwayat-filter-date" oninput="ofFilterRiwayatByDate()" style="width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box;margin-bottom:14px;">
+    <div id="of-riwayat-list"></div>
   </div>
 </div>
 
-<!-- Detail Sesi Opname (drill-down dari Riwayat) -->
-<div id="of-detail-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1001;padding:20px;overflow-y:auto;">
-  <div style="max-width:520px;margin:auto;background:var(--surface);border-radius:16px;overflow:hidden;">
-    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <div style="font-weight:800;font-size:14px;" id="of-detail-title">Sesi Opname</div>
-        <div style="font-size:11px;color:var(--muted);" id="of-detail-sub"></div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button onclick="ofDownloadPdf()" style="font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid #9333ea60;background:#9333ea15;color:#9333ea;font-weight:700;cursor:pointer;">⬇️ PDF</button>
-        <button onclick="document.getElementById('of-detail-overlay').style.display='none'" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;">✕</button>
-      </div>
-    </div>
-    <div id="of-detail-body" style="max-height:65vh;overflow-y:auto;padding:0 4px;"></div>
+<!-- ═══════════════════════════════
+     SCREEN: DETAIL SESI OPNAME
+═══════════════════════════════ -->
+<div class="screen" id="screen-opname-detail">
+  <div class="app-header">
+    <div class="back-btn" onclick="showScreen('screen-opname-riwayat')">←</div>
+    <div class="title-group"><h2 id="of-detail-title">Sesi Opname</h2><div class="sub" id="of-detail-sub"></div></div>
+    <button onclick="ofDownloadPdf()" style="background:none;border:1px solid #9333ea60;border-radius:10px;padding:7px 12px;color:#9333ea;font-size:11px;font-weight:700;cursor:pointer;">⬇️ PDF</button>
+  </div>
+  <div style="padding:14px 16px 100px;">
+    <div id="of-detail-body"></div>
   </div>
 </div>
 
@@ -3652,7 +3649,7 @@ var ofHistoryData     = null;
 var ofCurrentSession  = null; // sesi yang sedang dilihat detail-nya
 
 function openOpnameRiwayat() {
-  document.getElementById('of-riwayat-overlay').style.display = 'block';
+  showScreen('screen-opname-riwayat');
   document.getElementById('of-riwayat-filter-date').value = '';
   document.getElementById('of-riwayat-list').innerHTML =
     '<div style="padding:30px;text-align:center;color:var(--muted);font-size:12px;">⏳ Memuat...</div>';
@@ -3663,10 +3660,6 @@ function openOpnameRiwayat() {
     document.getElementById('of-riwayat-list').innerHTML =
       '<div style="padding:20px;color:#ef4444;font-size:13px;">❌ Gagal memuat riwayat</div>';
   });
-}
-
-function closeOpnameRiwayat() {
-  document.getElementById('of-riwayat-overlay').style.display = 'none';
 }
 
 function ofFilterRiwayatByDate() {
@@ -3708,8 +3701,7 @@ function ofShowDetail(sessionId) {
   ofCurrentSession = s;
   document.getElementById('of-detail-title').textContent = (s.tanggal || s.ts.split(' ')[0]) + ' — Opname FIFO';
   document.getElementById('of-detail-sub').textContent = s.ts + ' · ' + s.rows.length + ' item · 👤 ' + s.operator;
-  var body = document.getElementById('of-detail-body');
-  body.innerHTML = '<div style="overflow-x:auto;padding:4px;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:480px;">'
+  document.getElementById('of-detail-body').innerHTML = '<div style="overflow-x:auto;padding:4px;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:480px;">'
     + '<thead><tr style="background:var(--surface2);">'
       + '<th style="padding:6px;text-align:left;">SKU</th>'
       + '<th style="padding:6px;text-align:center;">Prodate</th>'
@@ -3730,7 +3722,7 @@ function ofShowDetail(sessionId) {
         + '</tr>';
       }).join('')
     + '</tbody></table></div>';
-  document.getElementById('of-detail-overlay').style.display = 'block';
+  showScreen('screen-opname-detail');
 }
 
 function ofDownloadPdf() {
@@ -3772,10 +3764,16 @@ function ofDownloadPdf() {
     + '<p style="margin-top:12px;color:#9ca3af;">Dicetak: ' + new Date().toLocaleString('id-ID') + '</p>'
     + '</body></html>';
 
-  var w = window.open('', '_blank');
-  if (!w) { showToast('⚠️ Pop-up diblokir browser, allow pop-up dulu'); return; }
-  w.document.write(html);
-  w.document.close();
+  var w = document.createElement('a');
+  var blob = new Blob([html], { type: 'text/html' });
+  var url  = URL.createObjectURL(blob);
+  w.href = url;
+  w.download = 'opname-' + tgl + '.html';
+  document.body.appendChild(w);
+  w.click();
+  document.body.removeChild(w);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  showToast('✅ File diunduh — buka di browser lalu Print > Save as PDF');
 }
 
 // ═══════════════════════════════════════
