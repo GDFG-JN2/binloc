@@ -1415,7 +1415,7 @@ input:focus, select:focus {
 
   <div style="padding:0 16px 100px;">
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;border:1px solid var(--border);">
-      <table style="border-collapse:collapse;width:100%;min-width:920px;font-size:12px;">
+      <table style="border-collapse:collapse;width:100%;min-width:1020px;font-size:12px;">
         <thead>
           <tr style="background:var(--surface2);">
             <th style="padding:8px 6px;text-align:center;width:32px;color:var(--muted);font-size:10px;">No</th>
@@ -1428,6 +1428,7 @@ input:focus, select:focus {
             <th style="padding:8px 6px;text-align:center;width:100px;color:var(--muted);font-size:10px;">Pecahan</th>
             <th style="padding:8px 6px;text-align:center;width:70px;color:var(--muted);font-size:10px;">Total</th>
             <th style="padding:8px 6px;text-align:center;width:80px;color:var(--muted);font-size:10px;">Ket</th>
+            <th style="padding:8px 6px;text-align:left;width:100px;color:var(--muted);font-size:10px;">Bin Loc</th>
             <th style="padding:8px 6px;width:28px;"></th>
           </tr>
         </thead>
@@ -3489,7 +3490,7 @@ function ofAddRow() {
   ofRows.push({
     no: ofRows.length + 1,
     kode: inherited.kode, nama: inherited.nama, std: inherited.std,
-    prodate: '', qtyAcuan: 0, pltStr: '', pecStr: ''
+    prodate: '', qtyAcuan: 0, pltStr: '', pecStr: '', binLoc: ''
   });
   ofRenderRows();
 }
@@ -3529,6 +3530,7 @@ function ofRenderRows() {
       + '<td style="padding:6px;"><input type="text" placeholder="5,3" value="' + escHtml(r.pecStr||'') + '" oninput="ofUpdateField(' + idx + ',\'pecStr\',this.value)" style="width:90px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);text-align:center;"></td>'
       + '<td style="padding:6px;text-align:center;font-weight:800;">' + calc.total + '</td>'
       + '<td style="padding:6px;text-align:center;font-weight:800;color:' + ketColor + ';">' + calc.ket + '</td>'
+      + '<td style="padding:6px;"><input type="text" placeholder="cth: A05" value="' + escHtml(r.binLoc||'') + '" oninput="ofUpdateField(' + idx + ',\'binLoc\',this.value)" style="width:90px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);text-transform:uppercase;"></td>'
       + '<td style="padding:6px;text-align:center;"><button onclick="ofDeleteRow(' + idx + ')" style="background:none;border:none;color:#dc2626;font-size:16px;cursor:pointer;padding:0;">🗑</button></td>'
     + '</tr>';
   }).join('');
@@ -3604,7 +3606,8 @@ function ofSave() {
     return {
       no: r.no, kode: r.kode, nama: r.nama, std: r.std, prodate: r.prodate,
       qtyAcuan: r.qtyAcuan, pltStr: r.pltStr, pltSum: calc.pltSum,
-      pecStr: r.pecStr, pecSum: calc.pecSum, total: calc.total, selisih: calc.selisih, ket: calc.ket
+      pecStr: r.pecStr, pecSum: calc.pecSum, total: calc.total, selisih: calc.selisih, ket: calc.ket,
+      binLoc: r.binLoc || ''
     };
   });
 
@@ -3677,6 +3680,7 @@ function ofShowDetail(idx) {
       + '<th style="padding:6px;text-align:center;">Acuan</th>'
       + '<th style="padding:6px;text-align:center;">Total</th>'
       + '<th style="padding:6px;text-align:center;">Ket</th>'
+      + '<th style="padding:6px;text-align:left;">Bin Loc</th>'
     + '</tr></thead><tbody>'
     + s.rows.map(function(r) {
         var c = r.ket === 'OK' ? '#16a34a' : (Number(r.selisih) > 0 ? '#2563eb' : '#dc2626');
@@ -3685,6 +3689,7 @@ function ofShowDetail(idx) {
           + '<td style="padding:6px;text-align:center;">' + r.qtyAcuan + '</td>'
           + '<td style="padding:6px;text-align:center;font-weight:800;">' + r.total + '</td>'
           + '<td style="padding:6px;text-align:center;font-weight:800;color:' + c + ';">' + r.ket + '</td>'
+          + '<td style="padding:6px;color:var(--muted);">' + escHtml(r.binLoc||'—') + '</td>'
         + '</tr>';
       }).join('')
     + '</tbody></table>';
