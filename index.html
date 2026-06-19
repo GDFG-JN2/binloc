@@ -2290,7 +2290,10 @@ function pecStr(pd, showTotal) {
   var list = (pd.pecahan_list && pd.pecahan_list.length > 0) ? pd.pecahan_list : (pec > 0 ? [pec] : []);
   var ktn  = pd.karton  || 0;
   var plt  = pd.pallet  || 0;
-  var std  = (plt > 0 && ktn > 0) ? Math.round((ktn - pec) / plt) : 0;
+  // Ambil STD asli dari master skuData — jangan hitung mundur dari karton/pallet
+  // (back-calculation rawan meleset kalau pallet pernah di-auto-break saat KELUAR pecahan)
+  var match = (skuData||[]).find(function(m) { return m.kode === pd.skuKode; });
+  var std = (match && match.std) ? match.std : ((plt > 0 && ktn > 0) ? Math.round((ktn - pec) / plt) : 0);
   var parts;
   if (plt > 0 && std > 0) {
     parts = plt + 'p@' + std + (list.length > 0 ? ' + ' + list.join(' + ') : '');
