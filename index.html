@@ -1443,6 +1443,11 @@ input:focus, select:focus {
       <input type="text" id="of-operator-input" placeholder="Tulis nama operator..." oninput="ofOperator = this.value.trim()" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
     </div>
 
+    <div style="margin-top:14px;">
+      <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Tanggal Opname</label>
+      <input type="date" id="of-tanggal-input" oninput="ofTanggal = this.value" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+    </div>
+
     <button onclick="ofSave()" id="of-save-btn" style="margin-top:18px;width:100%;padding:14px;border-radius:12px;border:none;background:#9333ea;color:#fff;font-size:14px;font-weight:800;cursor:pointer;">💾 Simpan Opname</button>
   </div>
 </div>
@@ -1464,6 +1469,9 @@ input:focus, select:focus {
       <div style="font-weight:800;font-size:15px;">📜 Riwayat Opname</div>
       <button onclick="closeOpnameRiwayat()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;">✕</button>
     </div>
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);">
+      <input type="date" id="of-riwayat-filter-date" oninput="ofFilterRiwayatByDate()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box;">
+    </div>
     <div id="of-riwayat-list" style="max-height:70vh;overflow-y:auto;padding:12px;"></div>
   </div>
 </div>
@@ -1476,7 +1484,10 @@ input:focus, select:focus {
         <div style="font-weight:800;font-size:14px;" id="of-detail-title">Sesi Opname</div>
         <div style="font-size:11px;color:var(--muted);" id="of-detail-sub"></div>
       </div>
-      <button onclick="document.getElementById('of-detail-overlay').style.display='none'" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;">✕</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button onclick="ofDownloadPdf()" style="font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid #9333ea60;background:#9333ea15;color:#9333ea;font-weight:700;cursor:pointer;">⬇️ PDF</button>
+        <button onclick="document.getElementById('of-detail-overlay').style.display='none'" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;">✕</button>
+      </div>
     </div>
     <div id="of-detail-body" style="max-height:65vh;overflow-y:auto;padding:0 4px;"></div>
   </div>
@@ -3470,14 +3481,22 @@ function renderTimeline(d) {
 // ═══════════════════════════════════════
 // STOCK OPNAME FIFO
 // ═══════════════════════════════════════
-var ofRows        = [];   // { no, kode, nama, std, prodate, qtyAcuan, pltStr, pecStr }
-var ofActiveRowIdx = null; // baris yang sedang cari SKU
+var ofRows        = [];
+var ofActiveRowIdx = null;
 var ofOperator     = null;
+var ofTanggal      = null;
+
+function _todayISODate() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 
 function openOpnameFifo() {
   ofRows = [];
   ofOperator = null;
+  ofTanggal  = _todayISODate();
   document.getElementById('of-operator-input').value = '';
+  document.getElementById('of-tanggal-input').value  = ofTanggal;
   ofAddRow();
   showScreen('screen-opname-fifo');
 }
@@ -3585,21 +3604,18 @@ function ofSelectSku(kode, nama) {
   var idx = ofActiveRowIdx;
   ofRows[idx].kode = kode;
   ofRows[idx].nama = nama;
+  // STD ambil langsung dari skuData (sudah ikut load bareng nama, tanpa delay)
+  var match = (skuData||[]).find(function(m) { return m.kode === kode; });
+  ofRows[idx].std = (match && match.std) ? match.std : 0;
   ofCloseSkuModal();
   ofRenderRows();
-  // Auto-fill STD, masih bisa diedit manual
-  gasCall('getStdBySku', kode, function(std) {
-    if (ofRows[idx]) {
-      ofRows[idx].std = std > 0 ? std : 0;
-      ofRenderRows();
-    }
-  }, function() {});
 }
 
 function ofSave() {
   var validRows = ofRows.filter(function(r) { return r.kode; });
   if (!validRows.length) { showToast('⚠️ Belum ada SKU yang diisi'); return; }
   if (!ofOperator) { showToast('⚠️ Isi nama operator dulu'); return; }
+  if (!ofTanggal)  { showToast('⚠️ Isi tanggal opname dulu'); return; }
 
   var payload = validRows.map(function(r) {
     var calc = _ofCalc(r);
@@ -3614,13 +3630,15 @@ function ofSave() {
   document.getElementById('of-save-btn').disabled = true;
   document.getElementById('of-save-btn').textContent = 'Menyimpan...';
 
-  gasCall('saveOpnameFifo', { rows: payload, operator: ofOperator }, function(res) {
+  gasCall('saveOpnameFifo', { rows: payload, operator: ofOperator, tanggal: ofTanggal }, function(res) {
     document.getElementById('of-save-btn').disabled = false;
     document.getElementById('of-save-btn').textContent = '💾 Simpan Opname';
     showToast('✅ ' + res.count + ' baris tersimpan');
     ofRows = [];
     ofOperator = null;
+    ofTanggal  = _todayISODate();
     document.getElementById('of-operator-input').value = '';
+    document.getElementById('of-tanggal-input').value  = ofTanggal;
     ofAddRow();
   }, function() {
     document.getElementById('of-save-btn').disabled = false;
@@ -3630,15 +3648,17 @@ function ofSave() {
 }
 
 // ── RIWAYAT OPNAME ──
-var ofHistoryData = null;
+var ofHistoryData     = null;
+var ofCurrentSession  = null; // sesi yang sedang dilihat detail-nya
 
 function openOpnameRiwayat() {
   document.getElementById('of-riwayat-overlay').style.display = 'block';
+  document.getElementById('of-riwayat-filter-date').value = '';
   document.getElementById('of-riwayat-list').innerHTML =
     '<div style="padding:30px;text-align:center;color:var(--muted);font-size:12px;">⏳ Memuat...</div>';
   gasCall('getOpnameFifoHistory', {}, function(data) {
     ofHistoryData = data;
-    ofRenderRiwayat(data);
+    ofRenderRiwayat(data.sessions);
   }, function() {
     document.getElementById('of-riwayat-list').innerHTML =
       '<div style="padding:20px;color:#ef4444;font-size:13px;">❌ Gagal memuat riwayat</div>';
@@ -3649,34 +3669,50 @@ function closeOpnameRiwayat() {
   document.getElementById('of-riwayat-overlay').style.display = 'none';
 }
 
-function ofRenderRiwayat(data) {
+function ofFilterRiwayatByDate() {
+  if (!ofHistoryData) return;
+  var filterDate = document.getElementById('of-riwayat-filter-date').value;
+  var sessions = ofHistoryData.sessions;
+  if (filterDate) {
+    sessions = sessions.filter(function(s) { return s.tanggal === filterDate; });
+  }
+  ofRenderRiwayat(sessions);
+}
+
+function ofRenderRiwayat(sessions) {
   var el = document.getElementById('of-riwayat-list');
-  if (!data || !data.ok || !data.sessions.length) {
+  if (!sessions || !sessions.length) {
     el.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:12px;">📭 Belum ada riwayat opname</div>';
     return;
   }
-  el.innerHTML = data.sessions.map(function(s, idx) {
+  el.innerHTML = sessions.map(function(s, idx) {
     var selColor = s.selisihCount > 0 ? '#dc2626' : '#16a34a';
     var selLabel = s.selisihCount > 0 ? s.selisihCount + ' selisih' : 'Semua OK';
-    return '<div onclick="ofShowDetail(' + idx + ')" style="background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;">'
+    var tglLabel = s.tanggal || s.ts.split(' ')[0];
+    return '<div onclick="ofShowDetail(\'' + escHtml(s.sessionId) + '\')" style="background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;">'
-        + '<div style="font-size:12px;font-weight:700;color:var(--text);">' + s.ts + '</div>'
+        + '<div>'
+          + '<div style="font-size:13px;font-weight:800;color:var(--text);">' + escHtml(tglLabel) + '</div>'
+          + '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + s.ts + ' · 👤 ' + escHtml(s.operator) + '</div>'
+        + '</div>'
         + '<div style="font-size:10px;color:' + selColor + ';font-weight:800;background:' + selColor + '15;padding:2px 8px;border-radius:5px;">' + selLabel + '</div>'
       + '</div>'
-      + '<div style="font-size:11px;color:var(--muted);margin-top:4px;">' + s.rows.length + ' item · 👤 ' + escHtml(s.operator) + '</div>'
+      + '<div style="font-size:11px;color:var(--muted);margin-top:4px;">' + s.rows.length + ' item</div>'
     + '</div>';
   }).join('');
 }
 
-function ofShowDetail(idx) {
-  var s = ofHistoryData.sessions[idx];
+function ofShowDetail(sessionId) {
+  var s = ofHistoryData && ofHistoryData.sessions.find(function(x){ return x.sessionId === sessionId; });
   if (!s) return;
-  document.getElementById('of-detail-title').textContent = s.ts;
-  document.getElementById('of-detail-sub').textContent = s.rows.length + ' item · Operator ' + s.operator;
+  ofCurrentSession = s;
+  document.getElementById('of-detail-title').textContent = (s.tanggal || s.ts.split(' ')[0]) + ' — Opname FIFO';
+  document.getElementById('of-detail-sub').textContent = s.ts + ' · ' + s.rows.length + ' item · 👤 ' + s.operator;
   var body = document.getElementById('of-detail-body');
-  body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+  body.innerHTML = '<div style="overflow-x:auto;padding:4px;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:480px;">'
     + '<thead><tr style="background:var(--surface2);">'
       + '<th style="padding:6px;text-align:left;">SKU</th>'
+      + '<th style="padding:6px;text-align:center;">Prodate</th>'
       + '<th style="padding:6px;text-align:center;">Acuan</th>'
       + '<th style="padding:6px;text-align:center;">Total</th>'
       + '<th style="padding:6px;text-align:center;">Ket</th>'
@@ -3685,15 +3721,61 @@ function ofShowDetail(idx) {
     + s.rows.map(function(r) {
         var c = r.ket === 'OK' ? '#16a34a' : (Number(r.selisih) > 0 ? '#2563eb' : '#dc2626');
         return '<tr style="border-top:1px solid var(--border);">'
-          + '<td style="padding:6px;"><div style="font-size:9px;color:var(--muted);font-family:var(--mono);">' + escHtml(r.kode) + '</div><div style="font-weight:700;">' + escHtml(r.nama) + '</div></td>'
+          + '<td style="padding:6px;"><div style="font-size:9px;color:var(--muted);font-family:var(--mono);">' + escHtml(String(r.kode||'')) + '</div><div style="font-weight:700;">' + escHtml(String(r.nama||'')) + '</div></td>'
+          + '<td style="padding:6px;text-align:center;color:var(--muted);">' + escHtml(String(r.prodate||'—')) + '</td>'
           + '<td style="padding:6px;text-align:center;">' + r.qtyAcuan + '</td>'
           + '<td style="padding:6px;text-align:center;font-weight:800;">' + r.total + '</td>'
           + '<td style="padding:6px;text-align:center;font-weight:800;color:' + c + ';">' + r.ket + '</td>'
-          + '<td style="padding:6px;color:var(--muted);">' + escHtml(r.binLoc||'—') + '</td>'
+          + '<td style="padding:6px;color:var(--muted);">' + escHtml(String(r.binLoc||'—')) + '</td>'
         + '</tr>';
       }).join('')
-    + '</tbody></table>';
+    + '</tbody></table></div>';
   document.getElementById('of-detail-overlay').style.display = 'block';
+}
+
+function ofDownloadPdf() {
+  var s = ofCurrentSession;
+  if (!s) return;
+  var tgl = s.tanggal || s.ts.split(' ')[0];
+  var rows = s.rows.map(function(r) {
+    var c = r.ket === 'OK' ? '#16a34a' : (Number(r.selisih) > 0 ? '#2563eb' : '#dc2626');
+    return '<tr>'
+      + '<td>' + escHtml(String(r.kode||'')) + '<br><small>' + escHtml(String(r.nama||'')) + '</small></td>'
+      + '<td>' + escHtml(String(r.prodate||'—')) + '</td>'
+      + '<td style="text-align:center;">' + r.qtyAcuan + '</td>'
+      + '<td style="text-align:center;">' + (r.pltStr||'0') + '</td>'
+      + '<td style="text-align:center;">' + (r.pecStr||'0') + '</td>'
+      + '<td style="text-align:center;font-weight:bold;">' + r.total + '</td>'
+      + '<td style="text-align:center;color:' + c + ';font-weight:bold;">' + r.ket + '</td>'
+      + '<td>' + escHtml(String(r.binLoc||'—')) + '</td>'
+    + '</tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
+    + '<title>Stock Opname ' + tgl + '</title>'
+    + '<style>'
+      + 'body{font-family:Arial,sans-serif;font-size:11px;margin:20px;color:#111;}'
+      + 'h2{margin:0 0 4px;font-size:15px;}p{margin:0 0 12px;color:#555;font-size:11px;}'
+      + 'table{width:100%;border-collapse:collapse;}'
+      + 'th{background:#1a237e;color:#fff;padding:6px 8px;text-align:left;font-size:10px;}'
+      + 'td{padding:5px 8px;border-bottom:1px solid #e5e7eb;vertical-align:top;}'
+      + 'tr:nth-child(even) td{background:#f9fafb;}'
+      + 'small{color:#6b7280;font-size:9px;}'
+      + '@media print{button{display:none;}}'
+    + '</style></head><body>'
+    + '<h2>Stock Opname FIFO</h2>'
+    + '<p>Tanggal: <b>' + tgl + '</b> &nbsp;·&nbsp; Operator: <b>' + escHtml(s.operator) + '</b> &nbsp;·&nbsp; ' + s.rows.length + ' item</p>'
+    + '<button onclick="window.print()" style="margin-bottom:12px;padding:6px 14px;background:#9333ea;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🖨️ Print / Save PDF</button>'
+    + '<table><thead><tr>'
+      + '<th>SKU</th><th>Prodate</th><th>Acuan</th><th>Qty Pallet</th><th>Pecahan</th><th>Total</th><th>Ket</th><th>Bin Loc</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<p style="margin-top:12px;color:#9ca3af;">Dicetak: ' + new Date().toLocaleString('id-ID') + '</p>'
+    + '</body></html>';
+
+  var w = window.open('', '_blank');
+  if (!w) { showToast('⚠️ Pop-up diblokir browser, allow pop-up dulu'); return; }
+  w.document.write(html);
+  w.document.close();
 }
 
 // ═══════════════════════════════════════
