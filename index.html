@@ -1436,21 +1436,33 @@ input:focus, select:focus {
       </table>
     </div>
 
+    <!-- Banner draft tersimpan — muncul otomatis kalau ada draft di sessionStorage -->
+    <div id="of-draft-banner" style="display:none;margin-top:10px;padding:12px 14px;background:#fefce8;border:1.5px solid #fbbf24;border-radius:10px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#92400e;">📋 Ada draft tersimpan</div>
+        <div id="of-draft-info" style="font-size:11px;color:#b45309;margin-top:2px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="ofRestoreDraft()" style="padding:7px 12px;border-radius:8px;border:none;background:#f59e0b;color:#fff;font-size:12px;font-weight:800;cursor:pointer;">Pulihkan</button>
+        <button onclick="ofDiscardDraft()" style="padding:7px 10px;border-radius:8px;border:none;background:none;border:1px solid #fbbf24;color:#92400e;font-size:12px;cursor:pointer;">Buang</button>
+      </div>
+    </div>
+
     <button onclick="ofAddRow()" style="margin-top:12px;width:100%;padding:11px;border-radius:10px;border:1px dashed var(--border);background:var(--surface2);color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;">➕ Tambah Baris</button>
 
     <div style="margin-top:16px;">
       <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Nama Operator</label>
-      <input type="text" id="of-operator-input" placeholder="Tulis nama operator..." oninput="ofOperator = this.value.trim()" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+      <input type="text" id="of-operator-input" placeholder="Tulis nama operator..." oninput="ofOperator = this.value.trim(); _ofScheduleDraft();" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
     </div>
 
     <div style="margin-top:14px;">
       <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Tanggal Opname</label>
-      <input type="date" id="of-tanggal-input" oninput="ofTanggal = this.value" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+      <input type="date" id="of-tanggal-input" oninput="ofTanggal = this.value; _ofScheduleDraft();" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
     </div>
 
     <div style="margin-top:14px;">
       <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Plant</label>
-      <select id="of-plant-select" onchange="ofPlant = this.value || null" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;appearance:none;">
+      <select id="of-plant-select" onchange="ofPlant = this.value || null; _ofScheduleDraft();" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;appearance:none;">
         <option value="">-- Pilih Plant --</option>
         <option value="1111">1111</option>
         <option value="1112">1112</option>
@@ -3520,6 +3532,78 @@ var ofOperator     = null;
 var ofTanggal      = null;
 var ofPlant        = null;
 
+var _ofDraftTimer = null;
+var OF_DRAFT_KEY  = 'binloc_opname_draft';
+
+function ofSaveDraft() {
+  try {
+    var draft = {
+      rows: ofRows,
+      operator: ofOperator,
+      tanggal: ofTanggal,
+      plant: ofPlant,
+      savedAt: new Date().toISOString()
+    };
+    sessionStorage.setItem(OF_DRAFT_KEY, JSON.stringify(draft));
+  } catch(e) { /* sessionStorage penuh atau tidak tersedia, skip */ }
+}
+
+function _ofScheduleDraft() {
+  // Debounce 1 detik supaya tidak spam tiap keystroke
+  clearTimeout(_ofDraftTimer);
+  _ofDraftTimer = setTimeout(ofSaveDraft, 1000);
+}
+
+function ofCheckDraft() {
+  try {
+    var raw = sessionStorage.getItem(OF_DRAFT_KEY);
+    if (!raw) { _ofHideDraftBanner(); return; }
+    var draft = JSON.parse(raw);
+    if (!draft || !draft.rows || !draft.rows.length) { _ofHideDraftBanner(); return; }
+    var rowCount = draft.rows.length;
+    var savedAt  = draft.savedAt ? new Date(draft.savedAt).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'}) : '—';
+    document.getElementById('of-draft-info').textContent =
+      rowCount + ' baris · ' + (draft.operator||'—') + ' · Plant ' + (draft.plant||'—') + ' · Disimpan ' + savedAt;
+    document.getElementById('of-draft-banner').style.display = 'flex';
+  } catch(e) { _ofHideDraftBanner(); }
+}
+
+function _ofHideDraftBanner() {
+  var b = document.getElementById('of-draft-banner');
+  if (b) b.style.display = 'none';
+}
+
+function ofRestoreDraft() {
+  try {
+    var raw = sessionStorage.getItem(OF_DRAFT_KEY);
+    if (!raw) return;
+    var draft = JSON.parse(raw);
+    ofRows     = draft.rows || [];
+    ofOperator = draft.operator || null;
+    ofTanggal  = draft.tanggal  || _todayISODate();
+    ofPlant    = draft.plant    || null;
+    document.getElementById('of-operator-input').value = ofOperator || '';
+    document.getElementById('of-tanggal-input').value  = ofTanggal;
+    document.getElementById('of-plant-select').value   = ofPlant   || '';
+    ofRenderRows();
+    _ofHideDraftBanner();
+    showToast('✅ Draft dipulihkan — ' + ofRows.length + ' baris');
+  } catch(e) {
+    showToast('⚠️ Gagal memulihkan draft');
+  }
+}
+
+function ofDiscardDraft() {
+  sessionStorage.removeItem(OF_DRAFT_KEY);
+  _ofHideDraftBanner();
+  showToast('🗑 Draft dibuang');
+}
+
+function ofClearDraft() {
+  sessionStorage.removeItem(OF_DRAFT_KEY);
+  _ofHideDraftBanner();
+}
+
 function _todayISODate() {
   var d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -3535,6 +3619,8 @@ function openOpnameFifo() {
   document.getElementById('of-plant-select').value   = '';
   ofAddRow();
   showScreen('screen-opname-fifo');
+  // Cek draft setelah screen muncul
+  setTimeout(ofCheckDraft, 100);
 }
 
 function ofAddRow() {
@@ -3548,12 +3634,14 @@ function ofAddRow() {
     prodate: '', qtyAcuan: 0, pltStr: '', pecStr: '', binLoc: ''
   });
   ofRenderRows();
+  _ofScheduleDraft();
 }
 
 function ofDeleteRow(idx) {
   ofRows.splice(idx, 1);
   ofRows.forEach(function(r, i) { r.no = i + 1; });
   ofRenderRows();
+  _ofScheduleDraft();
 }
 
 function _ofCalc(r) {
@@ -3603,6 +3691,7 @@ function ofUpdateField(idx, field, val) {
     tr.children[9].textContent = calc.ket;
     tr.children[9].style.color = ketColor;
   }
+  _ofScheduleDraft();
 }
 
 function ofOpenSkuModal(idx) {
@@ -3645,6 +3734,7 @@ function ofSelectSku(kode, nama) {
   ofRows[idx].std = (match && match.std) ? match.std : 0;
   ofCloseSkuModal();
   ofRenderRows();
+  _ofScheduleDraft();
 }
 
 function ofSave() {
@@ -3671,6 +3761,7 @@ function ofSave() {
     document.getElementById('of-save-btn').disabled = false;
     document.getElementById('of-save-btn').textContent = '💾 Simpan Opname';
     showToast('✅ ' + res.count + ' baris tersimpan');
+    ofClearDraft(); // hapus draft karena sudah berhasil tersimpan ke server
     ofRows = [];
     ofOperator = null;
     ofTanggal  = _todayISODate();
@@ -3682,7 +3773,7 @@ function ofSave() {
   }, function() {
     document.getElementById('of-save-btn').disabled = false;
     document.getElementById('of-save-btn').textContent = '💾 Simpan Opname';
-    showToast('❌ Gagal menyimpan');
+    showToast('❌ Gagal menyimpan — data draft masih tersimpan, jangan tutup app');
   });
 }
 
