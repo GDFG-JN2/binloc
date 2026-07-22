@@ -971,6 +971,10 @@ input:focus, select:focus {
         <button onclick="opnameTambahBarang()" style="padding:12px 24px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">➕ Input Barang</button>
       </div>
     </div>
+    <!-- Tombol tambah SKU baru — selalu muncul, bukan hanya saat bin kosong -->
+    <div id="topname-add-btn-wrap" style="display:none;margin-top:14px;padding-bottom:16px;">
+      <button onclick="opnameTambahBarang()" style="width:100%;padding:13px;border-radius:12px;border:1.5px dashed var(--border);background:none;color:#2563eb;font-size:13px;font-weight:700;cursor:pointer;">➕ Tambah SKU Lain ke Bin Ini</button>
+    </div>
   </div>
 </div>
 
@@ -4655,21 +4659,27 @@ function opnameTambahBarang() {
   if (!bin) return;
   resetState();
   state.binLoc = bin;
-  state.tipe   = 'LOKAL'; // default LOKAL untuk input barang baru ke bin kosong
   binSkuData   = [];
   document.getElementById('form-bin-display').textContent = bin;
   document.getElementById('form-header-sub').textContent  = 'Bin: ' + bin;
-  setTipe(state.tipe);
+  pilihTipe('LOKAL');
   setDefaultProdate();
   showScreen('screen-form');
   autoSelectMasuk();
 }
 
 function renderTrialOpname(data) {
-  var list  = document.getElementById('topname-list');
-  var empty = document.getElementById('topname-empty');
-  if (!data.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  var list    = document.getElementById('topname-list');
+  var empty   = document.getElementById('topname-empty');
+  var addWrap = document.getElementById('topname-add-btn-wrap');
+  if (!data.length) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    if (addWrap) addWrap.style.display = 'none'; // bin kosong → pakai tombol di empty state
+    return;
+  }
   empty.style.display = 'none';
+  if (addWrap) addWrap.style.display = 'block'; // ada isi → tampilkan tombol tambah SKU lain
 
   list.innerHTML = data.map(function(sku) {
     var rows = (sku.prodates || []).map(function(pd, idx) {
