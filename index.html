@@ -4074,13 +4074,23 @@ function processScanResult(raw) {
   }
 
   if (_scanPurpose === 'opname') {
-    if (!isValidRackBin(raw)) {
+    if (isValidRackBin(raw)) {
+      // Scan bin → load semua barang di bin itu
+      stopScanner();
+      loadTrialOpname(raw);
+    } else if (isSkuCode(raw) || isQrBarang(raw)) {
+      // Input SKU / QR barang saat mode opname → filter di bin yang sudah di-scan
+      if (!_trialScannedBin) {
+        showToast('❌ Scan bin dulu sebelum input barang');
+        return;
+      }
+      stopScanner();
+      var skuFilter = isQrBarang(raw) ? raw.substring(0, 6) : raw;
+      loadTrialOpname(_trialScannedBin, skuFilter);
+    } else {
       showToast('❌ ' + raw + ' bukan bin racking yang valid');
       setTimeout(function(){ startScanForOpname(); }, 1200);
-      return;
     }
-    stopScanner();
-    loadTrialOpname(raw);
     return;
   }
 
@@ -4617,16 +4627,23 @@ function startScanForOpname() {
   setTimeout(function(){ startCamera(); }, 400);
 }
 
-function loadTrialOpname(bin) {
+function loadTrialOpname(bin, skuFilter) {
   _trialScannedBin = bin;
-  document.getElementById('topname-bin-label').textContent = bin;
+  document.getElementById('topname-bin-label').textContent = bin + (skuFilter ? ' — SKU: ' + skuFilter : '');
   document.getElementById('topname-keeper').value = '';
   document.getElementById('topname-list').innerHTML =
     '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">⏳ Memuat...</div>';
   document.getElementById('topname-empty').style.display = 'none';
   showScreen('screen-trial-opname');
   gasCall('getSkuByBin', bin, function(data) {
-    renderTrialOpname(data || []);
+    var filtered = data || [];
+    if (skuFilter) {
+      var q = skuFilter.toLowerCase();
+      filtered = filtered.filter(function(s) {
+        return s.kode.toLowerCase().includes(q) || s.nama.toLowerCase().includes(q);
+      });
+    }
+    renderTrialOpname(filtered);
   }, function() {
     document.getElementById('topname-list').innerHTML =
       '<div style="color:#ef4444;padding:20px;font-size:13px;">❌ Gagal memuat data</div>';
@@ -4638,10 +4655,11 @@ function opnameTambahBarang() {
   if (!bin) return;
   resetState();
   state.binLoc = bin;
+  state.tipe   = 'LOKAL'; // default LOKAL untuk input barang baru ke bin kosong
   binSkuData   = [];
   document.getElementById('form-bin-display').textContent = bin;
   document.getElementById('form-header-sub').textContent  = 'Bin: ' + bin;
-  setTipe(tipe);       // setup form sesuai tipe (termasuk tampilkan quotation kalau EKSPOR)
+  setTipe(state.tipe);
   setDefaultProdate();
   showScreen('screen-form');
   autoSelectMasuk();
