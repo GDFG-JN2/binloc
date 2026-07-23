@@ -1473,7 +1473,12 @@ input:focus, select:focus {
       </select>
     </div>
 
-    <button onclick="ofSave()" id="of-save-btn" style="margin-top:18px;width:100%;padding:14px;border-radius:12px;border:none;background:#9333ea;color:#fff;font-size:14px;font-weight:800;cursor:pointer;">💾 Simpan Opname</button>
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button onclick="ofSaveLokal()" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #2563eb;background:none;color:#2563eb;font-size:13px;font-weight:800;cursor:pointer;">💾 Save Lokal</button>
+      <button onclick="ofLoadLokal()" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #2563eb;background:none;color:#2563eb;font-size:13px;font-weight:800;cursor:pointer;">📂 Load Lokal</button>
+    </div>
+
+    <button onclick="ofSave()" id="of-save-btn" style="margin-top:12px;width:100%;padding:14px;border-radius:12px;border:none;background:#9333ea;color:#fff;font-size:14px;font-weight:800;cursor:pointer;">💾 Simpan Opname</button>
   </div>
 </div>
 
@@ -3607,6 +3612,48 @@ function ofDiscardDraft() {
 function ofClearDraft() {
   sessionStorage.removeItem(OF_DRAFT_KEY);
   _ofHideDraftBanner();
+}
+
+// ── SAVE/LOAD LOKAL — manual, key terpisah dari auto-draft supaya tidak saling timpa ──
+var OF_LOKAL_KEY = 'binloc_opname_lokal';
+
+function ofSaveLokal() {
+  try {
+    var data = {
+      rows: ofRows,
+      operator: ofOperator,
+      tanggal: ofTanggal,
+      plant: ofPlant,
+      savedAt: new Date().toISOString()
+    };
+    sessionStorage.setItem(OF_LOKAL_KEY, JSON.stringify(data));
+    showToast('✅ Tersimpan lokal — ' + ofRows.length + ' baris. Aman kalau refresh/gagal simpan.');
+  } catch(e) {
+    showToast('⚠️ Gagal simpan lokal — storage penuh/tidak tersedia');
+  }
+}
+
+function ofLoadLokal() {
+  try {
+    var raw = sessionStorage.getItem(OF_LOKAL_KEY);
+    if (!raw) { showToast('📭 Belum ada data lokal tersimpan'); return; }
+    var data = JSON.parse(raw);
+    if (!data || !data.rows || !data.rows.length) { showToast('📭 Belum ada data lokal tersimpan'); return; }
+    _ofInitializing = true;
+    ofRows     = data.rows;
+    ofOperator = data.operator || null;
+    ofTanggal  = data.tanggal  || _todayISODate();
+    ofPlant    = data.plant    || null;
+    document.getElementById('of-operator-input').value = ofOperator || '';
+    document.getElementById('of-tanggal-input').value  = ofTanggal;
+    document.getElementById('of-plant-select').value   = ofPlant   || '';
+    ofRenderRows();
+    _ofInitializing = false;
+    var savedAt = data.savedAt ? new Date(data.savedAt).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'}) : '—';
+    showToast('✅ Dimuat dari lokal — ' + ofRows.length + ' baris (disimpan ' + savedAt + ')');
+  } catch(e) {
+    showToast('⚠️ Gagal memuat data lokal');
+  }
 }
 
 function openOpnameFifo() {
