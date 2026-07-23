@@ -971,7 +971,6 @@ input:focus, select:focus {
         <button onclick="opnameTambahBarang()" style="padding:12px 24px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">➕ Input Barang</button>
       </div>
     </div>
-    <!-- Tombol tambah SKU baru — selalu muncul, bukan hanya saat bin kosong -->
     <div id="topname-add-btn-wrap" style="display:none;margin-top:14px;padding-bottom:16px;">
       <button onclick="opnameTambahBarang()" style="width:100%;padding:13px;border-radius:12px;border:1.5px dashed var(--border);background:none;color:#2563eb;font-size:13px;font-weight:700;cursor:pointer;">➕ Tambah SKU Lain ke Bin Ini</button>
     </div>
@@ -1440,16 +1439,38 @@ input:focus, select:focus {
       </table>
     </div>
 
+    <!-- Banner draft tersimpan — muncul otomatis kalau ada draft di sessionStorage -->
+    <div id="of-draft-banner" style="display:none;margin-top:10px;padding:12px 14px;background:#fefce8;border:1.5px solid #fbbf24;border-radius:10px;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#92400e;">📋 Ada draft tersimpan</div>
+        <div id="of-draft-info" style="font-size:11px;color:#b45309;margin-top:2px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="ofRestoreDraft()" style="padding:7px 12px;border-radius:8px;border:none;background:#f59e0b;color:#fff;font-size:12px;font-weight:800;cursor:pointer;">Pulihkan</button>
+        <button onclick="ofDiscardDraft()" style="padding:7px 10px;border-radius:8px;border:1px solid #fbbf24;background:none;color:#92400e;font-size:12px;cursor:pointer;">Buang</button>
+      </div>
+    </div>
+
     <button onclick="ofAddRow()" style="margin-top:12px;width:100%;padding:11px;border-radius:10px;border:1px dashed var(--border);background:var(--surface2);color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;">➕ Tambah Baris</button>
 
     <div style="margin-top:16px;">
       <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Nama Operator</label>
-      <input type="text" id="of-operator-input" placeholder="Tulis nama operator..." oninput="ofOperator = this.value.trim()" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+      <input type="text" id="of-operator-input" placeholder="Tulis nama operator..." oninput="ofOperator = this.value.trim(); _ofScheduleDraft();" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
     </div>
 
     <div style="margin-top:14px;">
       <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Tanggal Opname</label>
-      <input type="date" id="of-tanggal-input" oninput="ofTanggal = this.value" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+      <input type="date" id="of-tanggal-input" oninput="ofTanggal = this.value; _ofScheduleDraft();" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+    </div>
+
+    <div style="margin-top:14px;">
+      <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Plant</label>
+      <select id="of-plant-select" onchange="ofPlant = this.value || null; _ofScheduleDraft();" style="width:100%;margin-top:6px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;appearance:none;">
+        <option value="">-- Pilih Plant --</option>
+        <option value="1111">1111</option>
+        <option value="1112">1112</option>
+        <option value="1113">1113</option>
+      </select>
     </div>
 
     <button onclick="ofSave()" id="of-save-btn" style="margin-top:18px;width:100%;padding:14px;border-radius:12px;border:none;background:#9333ea;color:#fff;font-size:14px;font-weight:800;cursor:pointer;">💾 Simpan Opname</button>
@@ -1531,6 +1552,7 @@ var state = {
 
 var skuData    = [];  // semua SKU (untuk MASUK)
 var binSkuData = [];  // SKU yg ada di bin ini (untuk KELUAR/PINDAH)
+var _capConfigReady = false; // true setelah getBinCapConfig dari sheet BIN_CAP selesai (sukses/gagal)
 
 // ═══════════════════════════════════════
 // INIT
@@ -1556,6 +1578,17 @@ window.addEventListener('DOMContentLoaded', function() {
   gasCall('getBinSkuList', null,
     function(data) { skuData = data || []; },
     function()     { skuData = []; }
+  );
+
+  // Load kapasitas bin dari sheet BIN_CAP sejak awal — supaya semua device
+  // (peta, validasi scan, input EKSPOR/LOKAL, dll) konsisten pakai angka
+  // terbaru dari server, bukan default hardcoded.
+  gasCall('getBinCapConfig', {},
+    function(capResult) {
+      if (capResult && capResult.cfg && capResult.cfg.length) PETA_CAP_CFG = capResult.cfg;
+      _capConfigReady = true;
+    },
+    function() { _capConfigReady = true; /* gagal → tetap pakai default hardcoded, jangan nge-hang submit */ }
   );
 });
 
@@ -2387,6 +2420,10 @@ function submitForm() {
 
   // Blok MASUK jika bin sudah >= 110% kapasitas
   if (state.aksi === 'MASUK') {
+    if (!_capConfigReady) {
+      showToast('⏳ Menyiapkan data kapasitas, coba lagi sebentar...', 2000);
+      return;
+    }
     var capCheck = _checkBinCapacity();
     if (capCheck.cap > 0 && capCheck.afterUsed > capCheck.cap * 1.1) {
       showToast('🚫 Bin ' + state.binLoc + ' sudah ' + Math.round(capCheck.curUsed / capCheck.cap * 100) + '% penuh — tidak bisa masuk barang lagi', 4000);
@@ -2698,17 +2735,22 @@ function petaRefresh() {
 }
 
 function petaLoadMap() {
+  // Cap config SELALU di-fetch ulang tiap buka tab Peta (request ringan) —
+  // supaya kalau device lain baru saja edit kapasitas, perubahan langsung
+  // kebaca di sini tanpa perlu reload app.
+  gasCall('getBinCapConfig', {}, function(capResult) {
+    if (capResult && capResult.cfg && capResult.cfg.length) PETA_CAP_CFG = capResult.cfg;
+    _petaAfterCapLoad();
+  }, function() {
+    _petaAfterCapLoad(); // gagal fetch cap → tetap lanjut pakai cap yang ada di memory
+  });
+}
+
+function _petaAfterCapLoad() {
   if (_petaLoaded && _petaData) { petaRenderMap(_petaData); return; }
   document.getElementById('peta-map-wrap').innerHTML =
     '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px"><div style="font-size:28px;margin-bottom:8px">⏳</div>Memuat data...</div>';
-
-  // Load cap config dari sheet dulu supaya konsisten antar device
-  gasCall('getBinCapConfig', {}, function(capResult) {
-    if (capResult && capResult.cfg && capResult.cfg.length) PETA_CAP_CFG = capResult.cfg;
-    _petaFetchData();
-  }, function() {
-    _petaFetchData(); // gagal → pakai default hardcoded
-  });
+  _petaFetchData();
 }
 
 function _petaFetchData() {
@@ -3489,20 +3531,98 @@ var ofRows        = [];
 var ofActiveRowIdx = null;
 var ofOperator     = null;
 var ofTanggal      = null;
+var ofPlant        = null;
+var _ofInitializing = false; // true selama openOpnameFifo mereset state — cegah auto-save overwrite draft asli
+var _ofDraftTimer   = null;
+var OF_DRAFT_KEY    = 'binloc_opname_draft';
 
 function _todayISODate() {
   var d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
+function ofSaveDraft() {
+  if (_ofInitializing) return; // jangan simpan draft kosong saat baru reset/buka screen
+  try {
+    var draft = {
+      rows: ofRows,
+      operator: ofOperator,
+      tanggal: ofTanggal,
+      plant: ofPlant,
+      savedAt: new Date().toISOString()
+    };
+    sessionStorage.setItem(OF_DRAFT_KEY, JSON.stringify(draft));
+  } catch(e) { /* sessionStorage penuh/tidak tersedia, skip */ }
+}
+
+function _ofScheduleDraft() {
+  clearTimeout(_ofDraftTimer);
+  _ofDraftTimer = setTimeout(ofSaveDraft, 1000);
+}
+
+function ofCheckDraft() {
+  try {
+    var raw = sessionStorage.getItem(OF_DRAFT_KEY);
+    if (!raw) { _ofHideDraftBanner(); return; }
+    var draft = JSON.parse(raw);
+    if (!draft || !draft.rows || !draft.rows.length) { _ofHideDraftBanner(); return; }
+    var savedAt = draft.savedAt ? new Date(draft.savedAt).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'}) : '—';
+    document.getElementById('of-draft-info').textContent =
+      draft.rows.length + ' baris · ' + (draft.operator||'—') + ' · Plant ' + (draft.plant||'—') + ' · Disimpan ' + savedAt;
+    document.getElementById('of-draft-banner').style.display = 'flex';
+  } catch(e) { _ofHideDraftBanner(); }
+}
+
+function _ofHideDraftBanner() {
+  var b = document.getElementById('of-draft-banner');
+  if (b) b.style.display = 'none';
+}
+
+function ofRestoreDraft() {
+  try {
+    var raw = sessionStorage.getItem(OF_DRAFT_KEY);
+    if (!raw) return;
+    var draft = JSON.parse(raw);
+    ofRows     = draft.rows || [];
+    ofOperator = draft.operator || null;
+    ofTanggal  = draft.tanggal  || _todayISODate();
+    ofPlant    = draft.plant    || null;
+    document.getElementById('of-operator-input').value = ofOperator || '';
+    document.getElementById('of-tanggal-input').value  = ofTanggal;
+    document.getElementById('of-plant-select').value   = ofPlant   || '';
+    ofRenderRows();
+    _ofHideDraftBanner();
+    showToast('✅ Draft dipulihkan — ' + ofRows.length + ' baris');
+  } catch(e) {
+    showToast('⚠️ Gagal memulihkan draft');
+  }
+}
+
+function ofDiscardDraft() {
+  sessionStorage.removeItem(OF_DRAFT_KEY);
+  _ofHideDraftBanner();
+  showToast('🗑 Draft dibuang');
+}
+
+function ofClearDraft() {
+  sessionStorage.removeItem(OF_DRAFT_KEY);
+  _ofHideDraftBanner();
+}
+
 function openOpnameFifo() {
+  _ofInitializing = true;
   ofRows = [];
   ofOperator = null;
   ofTanggal  = _todayISODate();
+  ofPlant    = null;
   document.getElementById('of-operator-input').value = '';
   document.getElementById('of-tanggal-input').value  = ofTanggal;
+  document.getElementById('of-plant-select').value   = '';
   ofAddRow();
   showScreen('screen-opname-fifo');
+  _ofInitializing = false;
+  // Cek draft setelah reset selesai — banner muncul kalau ada draft asli tersimpan
+  setTimeout(ofCheckDraft, 100);
 }
 
 function ofAddRow() {
@@ -3516,12 +3636,14 @@ function ofAddRow() {
     prodate: '', qtyAcuan: 0, pltStr: '', pecStr: '', binLoc: ''
   });
   ofRenderRows();
+  _ofScheduleDraft();
 }
 
 function ofDeleteRow(idx) {
   ofRows.splice(idx, 1);
   ofRows.forEach(function(r, i) { r.no = i + 1; });
   ofRenderRows();
+  _ofScheduleDraft();
 }
 
 function _ofCalc(r) {
@@ -3571,6 +3693,7 @@ function ofUpdateField(idx, field, val) {
     tr.children[9].textContent = calc.ket;
     tr.children[9].style.color = ketColor;
   }
+  _ofScheduleDraft();
 }
 
 function ofOpenSkuModal(idx) {
@@ -3613,6 +3736,7 @@ function ofSelectSku(kode, nama) {
   ofRows[idx].std = (match && match.std) ? match.std : 0;
   ofCloseSkuModal();
   ofRenderRows();
+  _ofScheduleDraft();
 }
 
 function ofSave() {
@@ -3620,6 +3744,7 @@ function ofSave() {
   if (!validRows.length) { showToast('⚠️ Belum ada SKU yang diisi'); return; }
   if (!ofOperator) { showToast('⚠️ Isi nama operator dulu'); return; }
   if (!ofTanggal)  { showToast('⚠️ Isi tanggal opname dulu'); return; }
+  if (!ofPlant)    { showToast('⚠️ Pilih Plant dulu (1111/1112/1113)'); return; }
 
   var payload = validRows.map(function(r) {
     var calc = _ofCalc(r);
@@ -3634,20 +3759,25 @@ function ofSave() {
   document.getElementById('of-save-btn').disabled = true;
   document.getElementById('of-save-btn').textContent = 'Menyimpan...';
 
-  gasCall('saveOpnameFifo', { rows: payload, operator: ofOperator, tanggal: ofTanggal }, function(res) {
+  gasCall('saveOpnameFifo', { rows: payload, operator: ofOperator, tanggal: ofTanggal, plant: ofPlant }, function(res) {
     document.getElementById('of-save-btn').disabled = false;
     document.getElementById('of-save-btn').textContent = '💾 Simpan Opname';
     showToast('✅ ' + res.count + ' baris tersimpan');
+    ofClearDraft();
+    _ofInitializing = true;
     ofRows = [];
     ofOperator = null;
     ofTanggal  = _todayISODate();
+    ofPlant    = null;
     document.getElementById('of-operator-input').value = '';
     document.getElementById('of-tanggal-input').value  = ofTanggal;
+    document.getElementById('of-plant-select').value   = '';
     ofAddRow();
+    _ofInitializing = false;
   }, function() {
     document.getElementById('of-save-btn').disabled = false;
     document.getElementById('of-save-btn').textContent = '💾 Simpan Opname';
-    showToast('❌ Gagal menyimpan');
+    showToast('❌ Gagal menyimpan — data draft masih tersimpan, jangan tutup app');
   });
 }
 
@@ -3689,10 +3819,11 @@ function ofRenderRiwayat(sessions) {
     var selColor = s.selisihCount > 0 ? '#dc2626' : '#16a34a';
     var selLabel = s.selisihCount > 0 ? s.selisihCount + ' selisih' : 'Semua OK';
     var tglLabel = s.tanggal || s.ts.split(' ')[0];
+    var plantBadge = s.plant ? '<span style="font-size:10px;font-weight:800;background:#1a237e15;color:#1a237e;padding:1px 7px;border-radius:4px;margin-left:6px;">Plant ' + escHtml(s.plant) + '</span>' : '';
     return '<div onclick="ofShowDetail(\'' + escHtml(s.sessionId) + '\')" style="background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;">'
         + '<div>'
-          + '<div style="font-size:13px;font-weight:800;color:var(--text);">' + escHtml(tglLabel) + '</div>'
+          + '<div style="font-size:13px;font-weight:800;color:var(--text);">' + escHtml(tglLabel) + plantBadge + '</div>'
           + '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + s.ts + ' · 👤 ' + escHtml(s.operator) + '</div>'
         + '</div>'
         + '<div style="font-size:10px;color:' + selColor + ';font-weight:800;background:' + selColor + '15;padding:2px 8px;border-radius:5px;">' + selLabel + '</div>'
@@ -3707,7 +3838,7 @@ function ofShowDetail(sessionId) {
   if (!s) return;
   ofCurrentSession = s;
   document.getElementById('of-detail-title').textContent = (s.tanggal || s.ts.split(' ')[0]) + ' — Opname FIFO';
-  document.getElementById('of-detail-sub').textContent = s.ts + ' · ' + s.rows.length + ' item · 👤 ' + s.operator;
+  document.getElementById('of-detail-sub').textContent = s.ts + ' · Plant ' + (s.plant||'—') + ' · ' + s.rows.length + ' item · 👤 ' + s.operator;
   document.getElementById('of-detail-body').innerHTML = '<div style="overflow-x:auto;padding:4px;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:480px;">'
     + '<thead><tr style="background:var(--surface2);">'
       + '<th style="padding:6px;text-align:left;">SKU</th>'
@@ -3735,51 +3866,100 @@ function ofShowDetail(sessionId) {
 function ofDownloadPdf() {
   var s = ofCurrentSession;
   if (!s) return;
-  var tgl = s.tanggal || s.ts.split(' ')[0];
-  var rows = s.rows.map(function(r) {
-    var c = r.ket === 'OK' ? '#16a34a' : (Number(r.selisih) > 0 ? '#2563eb' : '#dc2626');
-    return '<tr>'
-      + '<td>' + escHtml(String(r.kode||'')) + '<br><small>' + escHtml(String(r.nama||'')) + '</small></td>'
-      + '<td>' + escHtml(String(r.prodate||'—')) + '</td>'
-      + '<td style="text-align:center;">' + r.qtyAcuan + '</td>'
-      + '<td style="text-align:center;">' + (r.pltStr||'0') + '</td>'
-      + '<td style="text-align:center;">' + (r.pecStr||'0') + '</td>'
-      + '<td style="text-align:center;font-weight:bold;">' + r.total + '</td>'
-      + '<td style="text-align:center;color:' + c + ';font-weight:bold;">' + r.ket + '</td>'
-      + '<td>' + escHtml(String(r.binLoc||'—')) + '</td>'
-    + '</tr>';
-  }).join('');
+  var tgl     = s.tanggal || s.ts.split(' ')[0];
+  var plant   = s.plant || '';
+  var plantLabel = plant ? 'FIFO ' + plant : 'FIFO';
+
+  var totalProdate = 0, totalPallet = 0, totalKarton = 0;
+  var prodateSet = {};
+  s.rows.forEach(function(r) {
+    if (r.prodate && !prodateSet[r.prodate]) { prodateSet[r.prodate] = true; totalProdate++; }
+    totalPallet  += Number(r.pltSum) || 0;
+    totalKarton  += Number(r.total)  || 0;
+  });
+
+  var groups = [];
+  var groupMap = {};
+  s.rows.forEach(function(r) {
+    var key = (r.kode||'') + '|' + (r.nama||'');
+    if (!groupMap[key]) {
+      groupMap[key] = { kode: r.kode, nama: r.nama, rows: [] };
+      groups.push(groupMap[key]);
+    }
+    groupMap[key].rows.push(r);
+  });
+
+  var tableRows = '';
+  var skuNo = 0;
+  groups.forEach(function(g) {
+    skuNo++;
+    var span = g.rows.length;
+    g.rows.forEach(function(r, ri) {
+      var c = r.ket === 'OK' ? '#16a34a' : (Number(r.selisih) > 0 ? '#2563eb' : '#dc2626');
+      var pltDisplay = Number(r.pltSum) || 0;
+      var pecRaw = String(r.pecStr || '').trim();
+      var pecDisplay = pecRaw ? pecRaw.split(',').map(function(x){ return x.trim(); }).filter(Boolean).join('+') : '0';
+      tableRows += '<tr>';
+      if (ri === 0) {
+        tableRows += '<td rowspan="' + span + '" style="text-align:center;font-weight:bold;border-right:1px solid #e5e7eb;vertical-align:middle;">' + skuNo + '</td>';
+        tableRows += '<td rowspan="' + span + '" style="font-family:monospace;font-size:10px;border-right:1px solid #e5e7eb;vertical-align:middle;">' + escHtml(String(g.kode||'')) + '</td>';
+        tableRows += '<td rowspan="' + span + '" style="font-weight:700;border-right:1px solid #e5e7eb;vertical-align:middle;">' + escHtml(String(g.nama||'')) + '</td>';
+      }
+      tableRows += '<td style="text-align:center;">' + escHtml(String(r.prodate||'—')) + '</td>';
+      tableRows += '<td style="text-align:center;font-weight:bold;">' + pltDisplay + '</td>';
+      tableRows += '<td style="text-align:center;">' + pecDisplay + '</td>';
+      tableRows += '<td style="text-align:center;font-weight:bold;">' + (Number(r.total)||0) + '</td>';
+      tableRows += '<td>' + escHtml(String(r.binLoc||'—')) + '</td>';
+      tableRows += '<td style="text-align:center;font-weight:bold;color:' + c + ';">' + escHtml(String(r.ket||'—')) + '</td>';
+      tableRows += '</tr>';
+    });
+  });
 
   var html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
-    + '<title>Stock Opname ' + tgl + '</title>'
+    + '<title>Picking List FIFO ' + tgl + '</title>'
     + '<style>'
-      + 'body{font-family:Arial,sans-serif;font-size:11px;margin:20px;color:#111;}'
-      + 'h2{margin:0 0 4px;font-size:15px;}p{margin:0 0 12px;color:#555;font-size:11px;}'
+      + 'body{font-family:Arial,sans-serif;font-size:11px;margin:24px;color:#111;}'
+      + 'h2{margin:0 0 2px;font-size:16px;font-weight:900;letter-spacing:.5px;}'
+      + '.summary-boxes{display:flex;gap:12px;margin:14px 0 18px;}'
+      + '.summary-box{border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 18px;min-width:90px;text-align:center;}'
+      + '.summary-box .val{font-size:22px;font-weight:900;color:#111;line-height:1.1;}'
+      + '.summary-box .lbl{font-size:9px;color:#6b7280;font-weight:700;text-transform:uppercase;margin-top:2px;}'
       + 'table{width:100%;border-collapse:collapse;}'
-      + 'th{background:#1a237e;color:#fff;padding:6px 8px;text-align:left;font-size:10px;}'
-      + 'td{padding:5px 8px;border-bottom:1px solid #e5e7eb;vertical-align:top;}'
+      + 'th{background:#1a237e;color:#fff;padding:7px 8px;text-align:left;font-size:10px;font-weight:700;}'
+      + 'td{padding:5px 8px;border-bottom:1px solid #e5e7eb;vertical-align:middle;}'
       + 'tr:nth-child(even) td{background:#f9fafb;}'
-      + 'small{color:#6b7280;font-size:9px;}'
-      + '@media print{button{display:none;}}'
+      + '.plant-badge{display:inline-block;background:#1a237e15;color:#1a237e;font-weight:800;font-size:11px;padding:2px 10px;border-radius:5px;margin-left:8px;}'
+      + '@media print{button{display:none!important;}}'
     + '</style></head><body>'
-    + '<h2>Stock Opname FIFO</h2>'
-    + '<p>Tanggal: <b>' + tgl + '</b> &nbsp;·&nbsp; Operator: <b>' + escHtml(s.operator) + '</b> &nbsp;·&nbsp; ' + s.rows.length + ' item</p>'
-    + '<button onclick="window.print()" style="margin-bottom:12px;padding:6px 14px;background:#9333ea;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🖨️ Print / Save PDF</button>'
+    + '<h2>Picking List FIFO — ' + escHtml(tgl) + ' — ' + escHtml(s.operator) + ' <span class="plant-badge">' + escHtml(plantLabel) + '</span></h2>'
+    + '<button onclick="window.print()" style="margin-bottom:4px;padding:6px 14px;background:#9333ea;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;margin-top:10px;">🖨️ Print / Save PDF</button>'
+    + '<div class="summary-boxes">'
+      + '<div class="summary-box"><div class="val">' + totalProdate + '</div><div class="lbl">Prodate</div></div>'
+      + '<div class="summary-box"><div class="val">' + totalPallet  + '</div><div class="lbl">Pallet</div></div>'
+      + '<div class="summary-box"><div class="val">' + totalKarton.toLocaleString('id-ID') + '</div><div class="lbl">Total Karton</div></div>'
+    + '</div>'
     + '<table><thead><tr>'
-      + '<th>SKU</th><th>Prodate</th><th>Acuan</th><th>Qty Pallet</th><th>Pecahan</th><th>Total</th><th>Ket</th><th>Bin Loc</th>'
-    + '</tr></thead><tbody>' + rows + '</tbody></table>'
-    + '<p style="margin-top:12px;color:#9ca3af;">Dicetak: ' + new Date().toLocaleString('id-ID') + '</p>'
+      + '<th style="width:28px;text-align:center;">#</th>'
+      + '<th style="width:70px;">SKU</th>'
+      + '<th style="width:180px;">Nama Barang</th>'
+      + '<th style="width:90px;text-align:center;">Prodate</th>'
+      + '<th style="width:50px;text-align:center;">Pallet</th>'
+      + '<th style="width:55px;text-align:center;">Pecahan</th>'
+      + '<th style="width:75px;text-align:center;">Total Karton</th>'
+      + '<th style="width:80px;">Bin Loc</th>'
+      + '<th style="width:70px;text-align:center;">Keterangan</th>'
+    + '</tr></thead><tbody>' + tableRows + '</tbody></table>'
+    + '<p style="margin-top:14px;color:#9ca3af;font-size:10px;">Dicetak: ' + new Date().toLocaleString('id-ID') + '</p>'
     + '</body></html>';
 
-  var w = document.createElement('a');
+  var a = document.createElement('a');
   var blob = new Blob([html], { type: 'text/html' });
-  var url  = URL.createObjectURL(blob);
-  w.href = url;
-  w.download = 'opname-' + tgl + '.html';
-  document.body.appendChild(w);
-  w.click();
-  document.body.removeChild(w);
-  setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  a.href    = URL.createObjectURL(blob);
+  a.download = 'picking-list-' + plant + '-' + tgl + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
   showToast('✅ File diunduh — buka di browser lalu Print > Save as PDF');
 }
 
@@ -4079,11 +4259,9 @@ function processScanResult(raw) {
 
   if (_scanPurpose === 'opname') {
     if (isValidRackBin(raw)) {
-      // Scan bin → load semua barang di bin itu
       stopScanner();
       loadTrialOpname(raw);
     } else if (isSkuCode(raw) || isQrBarang(raw)) {
-      // Input SKU / QR barang saat mode opname → filter di bin yang sudah di-scan
       if (!_trialScannedBin) {
         showToast('❌ Scan bin dulu sebelum input barang');
         return;
@@ -4675,11 +4853,11 @@ function renderTrialOpname(data) {
   if (!data.length) {
     list.innerHTML = '';
     empty.style.display = 'block';
-    if (addWrap) addWrap.style.display = 'none'; // bin kosong → pakai tombol di empty state
+    if (addWrap) addWrap.style.display = 'none';
     return;
   }
   empty.style.display = 'none';
-  if (addWrap) addWrap.style.display = 'block'; // ada isi → tampilkan tombol tambah SKU lain
+  if (addWrap) addWrap.style.display = 'block';
 
   list.innerHTML = data.map(function(sku) {
     var rows = (sku.prodates || []).map(function(pd, idx) {
@@ -4827,17 +5005,14 @@ function opnameSimpanSelisih(kode, nama, idx, prodateAsli, qtAsli, sysTipe, sysP
   // Baca individual pecahan entries
   var pecEntries = document.querySelectorAll('#' + rowId + '-pec-list .opname-pec-entry');
   var pecList    = [];
-  var pecUserTouched = false; // true kalau user memang sengaja isi/kosongkan entry
+  var pecUserTouched = false;
   pecEntries.forEach(function(el) {
     var v = Number(el.value) || 0;
     pecList.push(v);
-    // Dianggap disentuh kalau value-nya beda dari placeholder/default,
-    // atau kalau value-nya explisit 0 (user sengaja nol-kan)
     if (el.value.trim() !== '') pecUserTouched = true;
   });
-  // Filter 0 hanya untuk sum, tapi tetap anggap "diisi" kalau ada entry apapun yg diketik
   var pecListNonZero = pecList.filter(function(v){ return v > 0; });
-  var pecInputEmpty  = !pecUserTouched; // false = user sudah isi (termasuk isi 0)
+  var pecInputEmpty  = !pecUserTouched;
   // Fallback ke nilai sistem jika tidak diisi
   var aktualPlt  = pltInput !== '' ? (Number(pltInput) || 0) : sysPlt;
   var aktualPec  = pecInputEmpty ? sysPec : pecListNonZero.reduce(function(a,b){return a+b;}, 0);
