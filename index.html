@@ -560,6 +560,9 @@ input:focus, select:focus {
 <!-- TOAST -->
 <div id="toast"></div>
 
+<!-- Tooltip hover untuk Peta 3D -->
+<div id="peta-3d-tooltip" style="display:none;position:fixed;z-index:9998;background:#111827f0;color:#fff;padding:8px 12px;border-radius:8px;font-size:11px;line-height:1.6;max-width:180px;pointer-events:none;box-shadow:0 6px 18px #00000040;"></div>
+
 <!-- ═══════════════════════════════
      SCREEN: AUTH (Daftar / Login)
 ═══════════════════════════════ -->
@@ -3173,7 +3176,7 @@ function petaSelect3DRack(bin) {
 function petaTap3DPos(posIdx) {
   var group = (_peta3DGroups || []).find(function(g) { return g.bin === _peta3DSelected; });
   if (!group) return;
-  var binCode = _peta3DSelected + String(group.rowFrom + posIdx).padStart(2, '0');
+  var binCode = _peta3DSelected + (group.rowFrom + posIdx);
 
   if (_peta3DSelectedPosIdx === posIdx) {
     // Tap posisi yang sama lagi → batalkan pilihan
@@ -3188,6 +3191,8 @@ function petaTap3DPos(posIdx) {
   petaShowPopup(binCode);
 }
 
+var _peta3DHoverInfo = {}; // key posIdx -> { binCode, used, capacity, items }
+
 function petaRender3D(binLetter) {
   var group = (_peta3DGroups || []).find(function(g) { return g.bin === binLetter; });
   var wrap = document.getElementById('peta-map-wrap');
@@ -3197,21 +3202,24 @@ function petaRender3D(binLetter) {
   var ny = group.depth;
   var nz = group.level;
 
-  // Agregasi occupancy per posisi bin (pakai data _petaData yang sudah ada)
+  // Agregasi occupancy + item per posisi bin (pakai data _petaData yang sudah ada)
   var binMap = {};
   (_petaData || []).forEach(function(r) {
-    if (!binMap[r.binLoc]) binMap[r.binLoc] = { used: 0, tipeCounts: {} };
+    if (!binMap[r.binLoc]) binMap[r.binLoc] = { used: 0, tipeCounts: {}, items: [] };
     var pecList = (r.pecahan_list && r.pecahan_list.length > 0) ? r.pecahan_list : ((r.pecahan||0) > 0 ? [r.pecahan] : []);
     binMap[r.binLoc].used += (r.pallet || 0) + pecList.length;
     var tp = String(r.tipe || 'LOKAL').toUpperCase();
     binMap[r.binLoc].tipeCounts[tp] = (binMap[r.binLoc].tipeCounts[tp] || 0) + 1;
+    binMap[r.binLoc].items.push(r);
   });
 
   // Hitung filled-set per posisi: level PALING ATAS duluan, lalu depth PALING BELAKANG duluan
   var filledSet = {}; // key 'x_y_z' -> true
   var colorMap  = {}; // key 'x' -> warna (LOKAL/EKSPOR)
+  _peta3DHoverInfo = {};
   for (var xi = 0; xi < nx; xi++) {
-    var binCode = binLetter + String(group.rowFrom + xi).padStart(2, '0');
+    var rowNum  = group.rowFrom + xi;
+    var binCode = binLetter + rowNum;
     var info = binMap[binCode];
     var capacity = ny * nz;
     var used = info ? info.used : 0;
@@ -3223,6 +3231,8 @@ function petaRender3D(binLetter) {
       color = isEkspor ? '#3b82f6' : '#f97316';
     }
     colorMap[xi] = color;
+
+    _peta3DHoverInfo[xi] = { binCode: binCode, rowNum: rowNum, used: used, capacity: capacity, items: info ? info.items : [] };
 
     var order = [];
     for (var z = nz - 1; z >= 0; z--) {
@@ -3240,7 +3250,6 @@ function petaRender3D(binLetter) {
     return !!filledSet[x + '_' + y + '_' + z];
   }
 
-  var t0 = performance.now();
   var cubes = [];
   for (var z2 = 0; z2 < nz; z2++) {
     for (var y2 = 0; y2 < ny; y2++) {
@@ -3262,6 +3271,7 @@ function petaRender3D(binLetter) {
   }
   cubes.sort(function(a, b) { return (a.x + a.y - a.z) - (b.x + b.y - b.z); });
 
+  // Bounding box mencakup kubus + area label nomor di depan
   var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
   cubes.forEach(function(c) {
     for (var dz=0; dz<=1; dz++) for (var dy=0; dy<=1; dy++) for (var dx=0; dx<=1; dx++) {
@@ -3270,28 +3280,46 @@ function petaRender3D(binLetter) {
       if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
     }
   });
+  var labelSpace = 26; // ruang tambahan di bawah untuk nomor posisi
   var pad = 30;
-  var w = maxX - minX + pad*2, h = maxY - minY + pad*2;
+  var w = maxX - minX + pad*2;
+  var h = maxY - minY + pad*2 + labelSpace;
 
   var svgParts = [];
-  svgParts.push('<svg width="'+w+'" height="'+h+'" viewBox="'+(minX-pad)+' '+(minY-pad)+' '+w+' '+h+'" style="background:#fff;border-radius:10px;">');
+  svgParts.push('<svg viewBox="'+(minX-pad)+' '+(minY-pad)+' '+w+' '+h+'" style="display:block;width:100%;height:auto;">');
+
+  // ── Lantai solid — supaya rak tidak kelihatan mengambang, terutama yang kosong ──
+  var floorPts = [
+    p3dIsoProject(0, 0, 0), p3dIsoProject(nx, 0, 0),
+    p3dIsoProject(nx, ny, 0), p3dIsoProject(0, ny, 0)
+  ].map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
+  svgParts.push('<polygon points="'+floorPts+'" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>');
 
   var shadowCenterX = (minX + maxX) / 2;
   var shadowY = maxY + 6;
   var shadowW = (maxX - minX) * 0.92;
-  svgParts.push('<ellipse cx="'+shadowCenterX.toFixed(1)+'" cy="'+shadowY.toFixed(1)+'" rx="'+(shadowW/2).toFixed(1)+'" ry="'+(P3D_TILE_H*0.55).toFixed(1)+'" fill="#000" opacity="0.08"/>');
+  svgParts.push('<ellipse cx="'+shadowCenterX.toFixed(1)+'" cy="'+shadowY.toFixed(1)+'" rx="'+(shadowW/2).toFixed(1)+'" ry="'+(P3D_TILE_H*0.55).toFixed(1)+'" fill="#000" opacity="0.10"/>');
 
-  var polyCount = 0;
   cubes.forEach(function(c) {
     var faces = p3dCubePolygons(c.x, c.y, c.z, c.colorInfo, { top:c.drawTop, faceX:c.drawFaceX, faceY:c.drawFaceY });
     faces.forEach(function(f) {
-      svgParts.push('<polygon points="'+f.pts+'" fill="'+f.fill+'" fill-opacity="'+f.op+'" stroke="'+f.stroke+'" stroke-opacity="'+f.strokeOp+'" stroke-width="1.6" style="cursor:pointer;" onclick="petaTap3DPos('+c.binIdx+')"/>');
-      polyCount++;
+      svgParts.push('<polygon points="'+f.pts+'" fill="'+f.fill+'" fill-opacity="'+f.op+'" stroke="'+f.stroke+'" stroke-opacity="'+f.strokeOp+'" stroke-width="1.6" style="cursor:pointer;" '
+        + 'onclick="petaTap3DPos('+c.binIdx+')" '
+        + 'onmouseenter="petaHover3D(event,'+c.binIdx+')" onmouseleave="petaHoverOut3D()" '
+        + 'ontouchstart="petaHover3D(event,'+c.binIdx+')"'
+      + '/>');
     });
   });
+
+  // ── Nomor posisi — di garis depan-bawah tiap kolom, biar kelihatan row berapa ──
+  for (var lx = 0; lx < nx; lx++) {
+    var lp = p3dIsoProject(lx + 0.5, ny, 0); // titik depan-bawah kolom ini
+    svgParts.push('<text x="'+lp.x.toFixed(1)+'" y="'+(lp.y+13).toFixed(1)+'" font-size="9" font-weight="700" fill="#475569" text-anchor="middle" font-family="monospace">'+(group.rowFrom+lx)+'</text>');
+  }
+
   svgParts.push('</svg>');
 
-  var infoBar = '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px 10px;font-size:10px;color:var(--muted);">'
+  var infoBar = '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px 10px;font-size:10px;color:var(--muted);flex-wrap:wrap;gap:6px;">'
     + '<span>Rak <b style="color:var(--text)">' + binLetter + '</b> · '
     + nx + ' posisi · ' + nz + ' level × ' + ny + ' depth</span>'
     + '<span style="display:flex;gap:10px;">'
@@ -3301,7 +3329,40 @@ function petaRender3D(binLetter) {
     + '</span>'
   + '</div>';
 
-  wrap.innerHTML = infoBar + '<div style="overflow-x:auto;">' + svgParts.join('') + '</div>';
+  wrap.innerHTML = infoBar
+    + '<div style="background:#fff;border-radius:12px;padding:12px;width:100%;box-sizing:border-box;">'
+      + svgParts.join('')
+    + '</div>';
+}
+
+function petaHover3D(evt, posIdx) {
+  var info = _peta3DHoverInfo[posIdx];
+  if (!info) return;
+  var tip = document.getElementById('peta-3d-tooltip');
+  if (!tip) return;
+
+  var itemsLines = '';
+  if (info.items && info.items.length) {
+    itemsLines = info.items.slice(0, 4).map(function(r) {
+      return '<div style="display:flex;justify-content:space-between;gap:8px;"><span>' + escHtml(r.skuNama || r.skuKode || '') + '</span><span style="font-weight:800;white-space:nowrap;">' + pecEff(r) + ' plt</span></div>';
+    }).join('');
+    if (info.items.length > 4) itemsLines += '<div style="color:var(--muted);font-size:10px;">+' + (info.items.length-4) + ' lainnya…</div>';
+  } else {
+    itemsLines = '<div style="color:var(--muted);">Kosong</div>';
+  }
+
+  tip.innerHTML = '<div style="font-weight:800;margin-bottom:4px;">' + escHtml(info.binCode) + ' · ' + info.used + '/' + info.capacity + ' plt</div>' + itemsLines;
+
+  var evX = (evt.touches && evt.touches[0]) ? evt.touches[0].clientX : evt.clientX;
+  var evY = (evt.touches && evt.touches[0]) ? evt.touches[0].clientY : evt.clientY;
+  tip.style.left = Math.min(evX + 12, window.innerWidth - 190) + 'px';
+  tip.style.top  = Math.max(evY - 10, 10) + 'px';
+  tip.style.display = 'block';
+}
+
+function petaHoverOut3D() {
+  var tip = document.getElementById('peta-3d-tooltip');
+  if (tip) tip.style.display = 'none';
 }
 
 function petaShowPopup(bin) {
