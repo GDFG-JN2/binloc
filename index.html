@@ -2997,6 +2997,10 @@ function _petaFetchData() {
 }
 
 function petaRenderMap(rawData) {
+  // Kembalikan style default (max-content) — override 3D sebelumnya (kalau ada) tidak boleh nyangkut di 2D
+  var wrapEl = document.getElementById('peta-map-wrap');
+  if (wrapEl) { wrapEl.style.width = ''; wrapEl.style.minWidth = ''; wrapEl.style.maxWidth = ''; wrapEl.style.margin = ''; }
+
   // Agregasi per bin: pallet efektif
   var binMap = {};
   rawData.forEach(function(r) {
@@ -3157,12 +3161,17 @@ function _peta3DAfterGroupsLoaded() {
       '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">Belum ada data LEVEL/DEPTH di BIN_CAP kolom I-L</div>';
     return;
   }
-  if (!_peta3DSelected) _peta3DSelected = _peta3DGroups[0].bin;
-  chipsEl.innerHTML = _peta3DGroups.map(function(g) {
-    var sel = g.bin === _peta3DSelected;
-    return '<div onclick="petaSelect3DRack(\'' + g.bin + '\')" style="padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800;'
+  // Dedup huruf bin — satu huruf bisa punya beberapa baris di sheet (depth beda per rentang row),
+  // tapi cukup 1 chip per huruf; render-nya nanti gabungkan semua rentang punya huruf itu.
+  var uniqueLetters = [];
+  _peta3DGroups.forEach(function(g) { if (uniqueLetters.indexOf(g.bin) === -1) uniqueLetters.push(g.bin); });
+
+  if (!_peta3DSelected) _peta3DSelected = uniqueLetters[0];
+  chipsEl.innerHTML = uniqueLetters.map(function(letter) {
+    var sel = letter === _peta3DSelected;
+    return '<div onclick="petaSelect3DRack(\'' + letter + '\')" style="padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800;'
       + (sel ? 'background:#9333ea;color:#fff;' : 'background:var(--surface2);color:var(--muted);border:1px solid var(--border);')
-      + '">' + g.bin + '</div>';
+      + '">' + letter + '</div>';
   }).join('');
   petaRender3D(_peta3DSelected);
 }
@@ -3174,9 +3183,9 @@ function petaSelect3DRack(bin) {
 }
 
 function petaTap3DPos(posIdx) {
-  var group = (_peta3DGroups || []).find(function(g) { return g.bin === _peta3DSelected; });
-  if (!group) return;
-  var binCode = _peta3DSelected + (group.rowFrom + posIdx);
+  var info = _peta3DHoverInfo[posIdx];
+  if (!info) return;
+  var binCode = info.binCode;
 
   if (_peta3DSelectedPosIdx === posIdx) {
     // Tap posisi yang sama lagi → batalkan pilihan
@@ -3194,13 +3203,46 @@ function petaTap3DPos(posIdx) {
 var _peta3DHoverInfo = {}; // key posIdx -> { binCode, used, capacity, items }
 
 function petaRender3D(binLetter) {
-  var group = (_peta3DGroups || []).find(function(g) { return g.bin === binLetter; });
+  var segments = (_peta3DGroups || []).filter(function(g) { return g.bin === binLetter; });
   var wrap = document.getElementById('peta-map-wrap');
-  if (!group) { wrap.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">Rak tidak ditemukan</div>'; return; }
+  if (!segments.length) { wrap.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">Rak tidak ditemukan</div>'; return; }
+  segments.sort(function(a, b) { return a.rowFrom - b.rowFrom; });
 
-  var nx = group.rowTo - group.rowFrom + 1;
-  var ny = group.depth;
-  var nz = group.level;
+  // .peta-map-wrap defaultnya width:max-content (buat grid 2D yang perlu scroll horizontal) —
+  // override di sini supaya 3D bisa full-width, terutama penting di desktop layar lebar.
+  // Dikasih batas wajar (900px) + center biar tidak melebar berlebihan di monitor ultra-wide.
+  wrap.style.width = '100%';
+  wrap.style.minWidth = '0';
+  wrap.style.maxWidth = '900px';
+  wrap.style.margin = '0 auto';
+
+  // Gabungkan semua rentang (row range) punya huruf ini — misal G: 1-25 depth4, 26-32 depth6.
+  // Origin dari row terkecil, nx = span total. Tiap posisi (x) cari sendiri segmen mana yang
+  // menaunginya untuk tahu depth & level KHUSUS posisi itu (bisa beda-beda per posisi).
+  var origin = Math.min.apply(null, segments.map(function(s){ return s.rowFrom; }));
+  var maxRow = Math.max.apply(null, segments.map(function(s){ return s.rowTo; }));
+  var nx = maxRow - origin + 1;
+
+  function segmentFor(rowNum) {
+    for (var i = 0; i < segments.length; i++) {
+      if (rowNum >= segments[i].rowFrom && rowNum <= segments[i].rowTo) return segments[i];
+    }
+    return null;
+  }
+
+  var nyByX = [], nzByX = [];
+  var maxNy = 1, maxNz = 1;
+  for (var xi0 = 0; xi0 < nx; xi0++) {
+    var seg = segmentFor(origin + xi0);
+    var ny_x = seg ? seg.depth : 0;
+    var nz_x = seg ? seg.level : 0;
+    nyByX[xi0] = ny_x;
+    nzByX[xi0] = nz_x;
+    if (ny_x > maxNy) maxNy = ny_x;
+    if (nz_x > maxNz) maxNz = nz_x;
+  }
+  var ny = maxNy; // dipakai untuk bounding box/lantai (posisi depth lebih kecil cuma isi sebagian)
+  var nz = maxNz;
 
   // Agregasi occupancy + item per posisi bin (pakai data _petaData yang sudah ada)
   var binMap = {};
@@ -3218,10 +3260,11 @@ function petaRender3D(binLetter) {
   var colorMap  = {}; // key 'x' -> warna (LOKAL/EKSPOR)
   _peta3DHoverInfo = {};
   for (var xi = 0; xi < nx; xi++) {
-    var rowNum  = group.rowFrom + xi;
-    var binCode = binLetter + rowNum;
+    var rowNum   = origin + xi;
+    var binCode  = binLetter + rowNum;
+    var ny_local = nyByX[xi], nz_local = nzByX[xi];
     var info = binMap[binCode];
-    var capacity = ny * nz;
+    var capacity = ny_local * nz_local;
     var used = info ? info.used : 0;
     var fillCount = Math.min(Math.round(used), capacity);
 
@@ -3235,8 +3278,8 @@ function petaRender3D(binLetter) {
     _peta3DHoverInfo[xi] = { binCode: binCode, rowNum: rowNum, used: used, capacity: capacity, items: info ? info.items : [] };
 
     var order = [];
-    for (var z = nz - 1; z >= 0; z--) {
-      for (var y = ny - 1; y >= 0; y--) {
+    for (var z = nz_local - 1; z >= 0; z--) {
+      for (var y = ny_local - 1; y >= 0; y--) {
         order.push([y, z]);
       }
     }
@@ -3245,8 +3288,12 @@ function petaRender3D(binLetter) {
     }
   }
 
+  function existsAt(x, y, z) {
+    if (x < 0 || x >= nx) return false;
+    return y >= 0 && y < nyByX[x] && z >= 0 && z < nzByX[x];
+  }
   function isFilledAt(x, y, z) {
-    if (x < 0 || x >= nx || y < 0 || y >= ny || z < 0 || z >= nz) return false;
+    if (!existsAt(x, y, z)) return false;
     return !!filledSet[x + '_' + y + '_' + z];
   }
 
@@ -3254,6 +3301,7 @@ function petaRender3D(binLetter) {
   for (var z2 = 0; z2 < nz; z2++) {
     for (var y2 = 0; y2 < ny; y2++) {
       for (var x2 = 0; x2 < nx; x2++) {
+        if (!existsAt(x2, y2, z2)) continue; // di luar depth/level posisi ini — tidak ada kubus di sana sama sekali
         var selfFilled = isFilledAt(x2, y2, z2);
         var drawTop   = !(selfFilled && isFilledAt(x2, y2, z2+1));
         var drawFaceX = !(selfFilled && isFilledAt(x2+1, y2, z2));
