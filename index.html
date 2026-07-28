@@ -3145,11 +3145,20 @@ function _peta3DLoadGroups() {
     '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">⏳ Memuat struktur rak...</div>';
   if (_peta3DGroups) { _peta3DAfterGroupsLoaded(); return; }
   gasCall('getBinCap3D', {}, function(res) {
-    _peta3DGroups = (res && res.groups) ? res.groups : [];
+    if (!res || !res.ok) {
+      var reason = (res && res.msg) ? res.msg : 'Tidak ada respons dari server';
+      document.getElementById('peta-map-wrap').innerHTML =
+        '<div style="padding:40px;text-align:center;color:#ef4444;font-size:12px">❌ Gagal memuat struktur rak<br><span style="color:var(--muted);font-size:10px">' + escHtml(reason) + '</span><br>'
+        + '<button onclick="_peta3DGroups=null;_peta3DLoadGroups();" style="margin-top:10px;padding:6px 14px;border:1px solid #ef444440;border-radius:8px;background:#ef444415;color:#ef4444;font-size:11px;font-weight:700;cursor:pointer;">🔄 Coba Lagi</button></div>';
+      return;
+    }
+    _peta3DGroups = res.groups || [];
     _peta3DAfterGroupsLoaded();
-  }, function() {
+  }, function(e) {
+    var reason = (e && e.msg) ? e.msg : 'Koneksi gagal / server tidak merespons';
     document.getElementById('peta-map-wrap').innerHTML =
-      '<div style="padding:40px;text-align:center;color:#ef4444;font-size:12px">❌ Gagal memuat struktur rak (BIN_CAP kolom I-L)</div>';
+      '<div style="padding:40px;text-align:center;color:#ef4444;font-size:12px">❌ Gagal memuat struktur rak<br><span style="color:var(--muted);font-size:10px">' + escHtml(reason) + '</span><br>'
+      + '<button onclick="_peta3DGroups=null;_peta3DLoadGroups();" style="margin-top:10px;padding:6px 14px;border:1px solid #ef444440;border-radius:8px;background:#ef444415;color:#ef4444;font-size:11px;font-weight:700;cursor:pointer;">🔄 Coba Lagi</button></div>';
   });
 }
 
@@ -3353,8 +3362,7 @@ function petaRender3D(binLetter) {
     faces.forEach(function(f) {
       svgParts.push('<polygon points="'+f.pts+'" fill="'+f.fill+'" fill-opacity="'+f.op+'" stroke="'+f.stroke+'" stroke-opacity="'+f.strokeOp+'" stroke-width="1.6" style="cursor:pointer;" '
         + 'onclick="petaTap3DPos('+c.binIdx+')" '
-        + 'onmouseenter="petaHover3D(event,'+c.binIdx+')" onmouseleave="petaHoverOut3D()" '
-        + 'ontouchstart="petaHover3D(event,'+c.binIdx+')"'
+        + 'onmouseenter="petaHover3D(event,'+c.binIdx+')" onmouseleave="petaHoverOut3D()"'
       + '/>');
     });
   });
