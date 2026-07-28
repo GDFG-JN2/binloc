@@ -560,6 +560,42 @@ input:focus, select:focus {
 <!-- TOAST -->
 <div id="toast"></div>
 
+<!-- ═══════════════════════════════
+     SCREEN: AUTH (Daftar / Login)
+═══════════════════════════════ -->
+<div class="screen" id="screen-auth" style="display:flex;flex-direction:column;justify-content:center;padding:24px;">
+  <div style="text-align:center;margin-bottom:28px;">
+    <div style="font-size:26px;font-weight:900;letter-spacing:1px;color:var(--text);">BINLOC</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:2px;">Warehouse Movement</div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:20px;background:var(--surface2);padding:4px;border-radius:12px;">
+    <button id="auth-tab-login" onclick="authSwitchTab('login')" class="active" style="flex:1;padding:10px;border:none;border-radius:9px;background:var(--surface);color:var(--text);font-weight:800;font-size:13px;cursor:pointer;">Masuk</button>
+    <button id="auth-tab-daftar" onclick="authSwitchTab('daftar')" style="flex:1;padding:10px;border:none;border-radius:9px;background:none;color:var(--muted);font-weight:800;font-size:13px;cursor:pointer;">Daftar</button>
+  </div>
+
+  <div id="auth-form-login">
+    <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Username</label>
+    <input type="text" id="auth-login-username" placeholder="Username" style="width:100%;margin-top:6px;margin-bottom:12px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+    <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Password</label>
+    <input type="password" id="auth-login-password" placeholder="Password" style="width:100%;margin-top:6px;margin-bottom:6px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+    <div id="auth-login-error" style="display:none;color:#dc2626;font-size:12px;font-weight:700;margin-bottom:10px;"></div>
+    <button id="auth-login-btn" onclick="authDoLogin()" style="width:100%;margin-top:8px;padding:14px;border-radius:12px;border:none;background:#9333ea;color:#fff;font-size:14px;font-weight:800;cursor:pointer;">Masuk</button>
+  </div>
+
+  <div id="auth-form-daftar" style="display:none;">
+    <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Nama Lengkap</label>
+    <input type="text" id="auth-daftar-nama" placeholder="Nama lengkap" style="width:100%;margin-top:6px;margin-bottom:12px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+    <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Username</label>
+    <input type="text" id="auth-daftar-username" placeholder="Buat username" style="width:100%;margin-top:6px;margin-bottom:12px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+    <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;">Password</label>
+    <input type="password" id="auth-daftar-password" placeholder="Buat password (min 4 karakter)" style="width:100%;margin-top:6px;margin-bottom:6px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;box-sizing:border-box;">
+    <div id="auth-daftar-error" style="display:none;color:#dc2626;font-size:12px;font-weight:700;margin-bottom:10px;"></div>
+    <div id="auth-daftar-success" style="display:none;color:#16a34a;font-size:12px;font-weight:700;margin-bottom:10px;"></div>
+    <button id="auth-daftar-btn" onclick="authDoRegister()" style="width:100%;margin-top:8px;padding:14px;border-radius:12px;border:none;background:#9333ea;color:#fff;font-size:14px;font-weight:800;cursor:pointer;">Daftar</button>
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5;">Setelah daftar, akun perlu disetujui Bos dulu sebelum bisa login.</div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════
      SCREEN 0: SPLASH
@@ -576,6 +612,10 @@ input:focus, select:focus {
      SCREEN 1: PILIH TIPE
 ═══════════════════════════════ -->
 <div class="screen" id="screen-tipe">
+  <div style="position:absolute;top:14px;right:14px;display:flex;align-items:center;gap:8px;z-index:5;">
+    <div id="auth-user-badge" style="font-size:10px;color:var(--muted);font-weight:700;"></div>
+    <button onclick="authLogout()" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;">Keluar</button>
+  </div>
   <div class="tipe-title">Pilih<br><span>Tipe Barang</span></div>
   <div class="tipe-sub">Sesi ini untuk jenis barang apa?</div>
   <div class="tipe-cards">
@@ -792,10 +832,8 @@ input:focus, select:focus {
       </div>
       <div style="margin-bottom:14px;">
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Operator</div>
-        <div class="operator-chips">
-          <div class="op-chip" onclick="pilihTrialMOp(this,'A')">A</div>
-          <div class="op-chip" onclick="pilihTrialMOp(this,'B')">B</div>
-          <div class="op-chip" onclick="pilihTrialMOp(this,'C')">C</div>
+        <div style="padding:10px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px;">
+          <span>👤</span><span id="tmasuk-operator-name">—</span>
         </div>
         <input type="hidden" id="tmasuk-operator" value="">
       </div>
@@ -920,10 +958,8 @@ input:focus, select:focus {
       <!-- Operator -->
       <div style="margin-bottom:14px;">
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Operator</div>
-        <div class="operator-chips">
-          <div class="op-chip" onclick="pilihTrialKOp(this,'A')">A</div>
-          <div class="op-chip" onclick="pilihTrialKOp(this,'B')">B</div>
-          <div class="op-chip" onclick="pilihTrialKOp(this,'C')">C</div>
+        <div style="padding:10px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px;">
+          <span>👤</span><span id="tkeluar-operator-name">—</span>
         </div>
       </div>
 
@@ -1377,10 +1413,8 @@ input:focus, select:focus {
     <!-- Operator -->
     <div class="form-section">
       <div class="section-label">Operator</div>
-      <div class="operator-chips">
-        <div class="op-chip" onclick="pilihOp(this, 'A')">A</div>
-        <div class="op-chip" onclick="pilihOp(this, 'B')">B</div>
-        <div class="op-chip" onclick="pilihOp(this, 'C')">C</div>
+      <div id="operator-auto-display" style="padding:12px 14px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;">
+        <span>👤</span><span id="operator-auto-name">—</span>
       </div>
     </div>
 
@@ -1527,15 +1561,36 @@ input:focus, select:focus {
 var GAS_URL = 'https://crimson-voice-bce5.kemalrifael71.workers.dev';
 
 // Helper: panggil GAS via Cloudflare Worker (support semua browser)
+var PUBLIC_ACTIONS = ['registerUser', 'loginUser']; // action yang tidak butuh token
 function gasCall(action, params, onSuccess, onError) {
   var url = GAS_URL + '?action=' + encodeURIComponent(action)
           + '&_t=' + Date.now(); // cache busting
+
+  // Token dikirim TERPISAH dari params — supaya tidak merusak action yang
+  // kirim params sebagai primitive (string/angka), bukan object.
+  if (PUBLIC_ACTIONS.indexOf(action) === -1) {
+    var authToken = _authGetToken();
+    if (!authToken) {
+      _authForceLogout('Sesi tidak ditemukan, silakan login.');
+      if (onError) onError({ msg: 'Belum login' });
+      return;
+    }
+    url += '&token=' + encodeURIComponent(authToken);
+  }
+
   if (params !== null && params !== undefined) {
     url += '&params=' + encodeURIComponent(JSON.stringify(params));
   }
   fetch(url, { redirect: 'follow', cache: 'no-store' })
   .then(function(r) { return r.json(); })
-  .then(function(data) { if (onSuccess) onSuccess(data); })
+  .then(function(data) {
+    if (data && data.authError) {
+      _authForceLogout(data.msg || 'Sesi tidak valid, silakan login ulang.');
+      if (onError) onError(data);
+      return;
+    }
+    if (onSuccess) onSuccess(data);
+  })
   .catch(function(err) { if (onError) onError(err); });
 }
 
@@ -1562,17 +1617,133 @@ var _capConfigReady = false; // true setelah getBinCapConfig dari sheet BIN_CAP 
 // ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
-window.addEventListener('DOMContentLoaded', function() {
-  // Pastikan splash selalu hilang apapun yang terjadi
+// ═══════════════════════════════════════
+// AUTH — session localStorage, gate sebelum app jalan
+// ═══════════════════════════════════════
+var AUTH_KEY = 'binloc_auth_session';
+var _currentUser = null; // { username, nama, role, token }
+
+function _authGetToken() {
+  var s = _authGetSession();
+  return s ? s.token : null;
+}
+
+function _authGetSession() {
+  try {
+    var raw = localStorage.getItem(AUTH_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+function _authSaveSession(data) {
+  try {
+    localStorage.setItem(AUTH_KEY, JSON.stringify(data));
+    _currentUser = data;
+  } catch(e) { /* localStorage tidak tersedia — tetap jalan di memori untuk sesi ini */ _currentUser = data; }
+}
+
+function _authForceLogout(msg) {
+  try { localStorage.removeItem(AUTH_KEY); } catch(e) {}
+  _currentUser = null;
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  var authScreen = document.getElementById('screen-auth');
+  if (authScreen) authScreen.classList.add('active');
+  var errEl = document.getElementById('auth-login-error');
+  if (errEl && msg) { errEl.textContent = msg; errEl.style.display = 'block'; }
+}
+
+function authSwitchTab(tab) {
+  var loginTab  = document.getElementById('auth-tab-login');
+  var daftarTab = document.getElementById('auth-tab-daftar');
+  var isLogin = tab === 'login';
+  loginTab.style.background  = isLogin ? 'var(--surface)' : 'none';
+  loginTab.style.color       = isLogin ? 'var(--text)' : 'var(--muted)';
+  daftarTab.style.background = !isLogin ? 'var(--surface)' : 'none';
+  daftarTab.style.color      = !isLogin ? 'var(--text)' : 'var(--muted)';
+  document.getElementById('auth-form-login').style.display  = isLogin ? 'block' : 'none';
+  document.getElementById('auth-form-daftar').style.display = !isLogin ? 'block' : 'none';
+  document.getElementById('auth-login-error').style.display  = 'none';
+  document.getElementById('auth-daftar-error').style.display = 'none';
+  document.getElementById('auth-daftar-success').style.display = 'none';
+}
+
+function authDoLogin() {
+  var username = document.getElementById('auth-login-username').value.trim();
+  var password = document.getElementById('auth-login-password').value;
+  var errEl = document.getElementById('auth-login-error');
+  var btn = document.getElementById('auth-login-btn');
+  errEl.style.display = 'none';
+  if (!username || !password) { errEl.textContent = 'Isi username dan password'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Memproses...';
+  gasCall('loginUser', { username: username, password: password }, function(res) {
+    btn.disabled = false; btn.textContent = 'Masuk';
+    if (!res || !res.ok) {
+      errEl.textContent = (res && res.msg) || 'Login gagal';
+      errEl.style.display = 'block';
+      return;
+    }
+    _authSaveSession({ username: res.username, nama: res.nama, role: res.role, token: res.token });
+    document.getElementById('auth-login-password').value = '';
+    _startAppAfterAuth();
+  }, function() {
+    btn.disabled = false; btn.textContent = 'Masuk';
+    errEl.textContent = 'Gagal terhubung ke server';
+    errEl.style.display = 'block';
+  });
+}
+
+function authDoRegister() {
+  var nama     = document.getElementById('auth-daftar-nama').value.trim();
+  var username = document.getElementById('auth-daftar-username').value.trim();
+  var password = document.getElementById('auth-daftar-password').value;
+  var errEl = document.getElementById('auth-daftar-error');
+  var okEl  = document.getElementById('auth-daftar-success');
+  var btn = document.getElementById('auth-daftar-btn');
+  errEl.style.display = 'none';
+  okEl.style.display = 'none';
+  if (!nama || !username || !password) { errEl.textContent = 'Semua field wajib diisi'; errEl.style.display = 'block'; return; }
+  if (password.length < 4) { errEl.textContent = 'Password minimal 4 karakter'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Memproses...';
+  gasCall('registerUser', { nama: nama, username: username, password: password }, function(res) {
+    btn.disabled = false; btn.textContent = 'Daftar';
+    if (!res || !res.ok) {
+      errEl.textContent = (res && res.msg) || 'Pendaftaran gagal';
+      errEl.style.display = 'block';
+      return;
+    }
+    okEl.textContent = '✅ ' + res.msg;
+    okEl.style.display = 'block';
+    document.getElementById('auth-daftar-nama').value = '';
+    document.getElementById('auth-daftar-username').value = '';
+    document.getElementById('auth-daftar-password').value = '';
+  }, function() {
+    btn.disabled = false; btn.textContent = 'Daftar';
+    errEl.textContent = 'Gagal terhubung ke server';
+    errEl.style.display = 'block';
+  });
+}
+
+function authLogout() {
+  _authForceLogout(null);
+}
+
+// Dipanggil setelah auth berhasil (baik dari session tersimpan maupun baru login)
+function _startAppAfterAuth() {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+
+  var badge = document.getElementById('auth-user-badge');
+  if (badge && _currentUser) badge.textContent = '👤 ' + (_currentUser.nama || _currentUser.username);
+
   function goToMain() {
     document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
     var el = document.getElementById('screen-tipe');
     if (el) el.classList.add('active');
   }
 
-  // Hard fallback — splash PASTI hilang dalam 1.5 detik
   var forceFallback = setTimeout(goToMain, 1500);
-
   try { initListeners(); } catch(e) { console.warn('initListeners:', e); }
 
   setTimeout(function() {
@@ -1585,16 +1756,25 @@ window.addEventListener('DOMContentLoaded', function() {
     function()     { skuData = []; }
   );
 
-  // Load kapasitas bin dari sheet BIN_CAP sejak awal — supaya semua device
-  // (peta, validasi scan, input EKSPOR/LOKAL, dll) konsisten pakai angka
-  // terbaru dari server, bukan default hardcoded.
   gasCall('getBinCapConfig', {},
     function(capResult) {
       if (capResult && capResult.cfg && capResult.cfg.length) PETA_CAP_CFG = capResult.cfg;
       _capConfigReady = true;
     },
-    function() { _capConfigReady = true; /* gagal → tetap pakai default hardcoded, jangan nge-hang submit */ }
+    function() { _capConfigReady = true; }
   );
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  var session = _authGetSession();
+  if (session && session.token) {
+    _currentUser = session;
+    _startAppAfterAuth();
+  } else {
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    var authScreen = document.getElementById('screen-auth');
+    if (authScreen) authScreen.classList.add('active');
+  }
 });
 
 function initListeners() {
@@ -1703,7 +1883,10 @@ function resetState() {
   state.binTujuan = null;
   state.aksi = null;
   state.sku = null;
-  state.operator = null;
+  // Operator otomatis dari user yang login — bukan pilihan chip bebas lagi
+  state.operator = _currentUser ? (_currentUser.nama || _currentUser.username) : null;
+  var opDisplay = document.getElementById('operator-auto-name');
+  if (opDisplay) opDisplay.textContent = state.operator || '—';
   state.selectedProdate = null;
   state.std = null;
   state.maxPallet = null;
@@ -2359,14 +2542,9 @@ function escHtml(s) {
 }
 
 // ═══════════════════════════════════════
-// OPERATOR
+// OPERATOR — otomatis dari user yang login (lihat resetState), tidak ada
+// pilihan chip bebas lagi untuk transaksi utama.
 // ═══════════════════════════════════════
-function pilihOp(el, nama) {
-  state.operator = nama;
-  document.querySelectorAll('.op-chip').forEach(function(c) { c.classList.remove('selected'); });
-  el.classList.add('selected');
-  updateSubmitState();
-}
 
 // ═══════════════════════════════════════
 // VALIDATE & SUBMIT
@@ -4357,13 +4535,12 @@ function openTrialMasuk(skuKode, prodateVal, quotationVal) {
 
   _trialScannedSku = { kode: skuKode, nama: '', std: 0, prodate: prodateVal || '', quotation: quotationVal || '' };
 
-  // Reset operator chips
-  document.getElementById('tmasuk-operator').value = '';
+  // Operator otomatis dari user yang login
+  _autoFillTrialMOp();
   document.getElementById('tmasuk-keterangan').value = '';
   document.getElementById('tmasuk-qt-toggle').style.display = 'none';
   document.getElementById('tmasuk-std-manual-wrap').style.display = 'none';
   document.getElementById('tmasuk-std-manual').value = '';
-  document.querySelectorAll('#screen-trial-masuk .op-chip').forEach(function(c) { c.classList.remove('selected'); });
 
   // Prodate: dari QR jika ada, fallback hari ini
   if (prodateVal) {
@@ -4531,16 +4708,19 @@ function showTmasukQtField() {
   document.getElementById('tmasuk-quotation').focus();
 }
 
-function pilihTrialMOp(el, nama) {
+// Operator otomatis dari user yang login — dipanggil saat screen trial masuk/keluar dibuka
+function _autoFillTrialMOp() {
+  var nama = _currentUser ? (_currentUser.nama || _currentUser.username) : '';
   document.getElementById('tmasuk-operator').value = nama;
-  document.querySelectorAll('#screen-trial-masuk .op-chip').forEach(function(c) { c.classList.remove('selected'); });
-  el.classList.add('selected');
+  var el = document.getElementById('tmasuk-operator-name');
+  if (el) el.textContent = nama || '—';
 }
 
-function pilihTrialKOp(el, nama) {
+function _autoFillTrialKOp() {
+  var nama = _currentUser ? (_currentUser.nama || _currentUser.username) : '';
   _trialK.operator = nama;
-  document.querySelectorAll('#screen-trial-keluar .op-chip').forEach(function(c) { c.classList.remove('selected'); });
-  el.classList.add('selected');
+  var el = document.getElementById('tkeluar-operator-name');
+  if (el) el.textContent = nama || '—';
 }
 
 function loadTrialKeluar(bin) {
@@ -4552,9 +4732,8 @@ function loadTrialKeluar(bin) {
   document.getElementById('tkeluar-form').style.display = 'none';
   setTrialKAksi('KELUAR');
   _trialK.tipe = 'LOKAL'; // default, akan di-override saat pilih SKU
-  // Reset op chips
-  document.querySelectorAll('#screen-trial-keluar .op-chip').forEach(function(c){ c.classList.remove('selected'); });
-  _trialK.operator = null;
+  // Operator otomatis dari user yang login
+  _autoFillTrialKOp();
   showScreen('screen-trial-keluar');
 
   gasCall('getSkuByBin', bin, function(data) {
