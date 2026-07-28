@@ -3091,10 +3091,11 @@ function p3dShadeColor(hex, percent) {
 }
 
 function p3dColorInfo(hexOrEmpty) {
+  var navy = '#1e293b'; // biru dongker tebal — garis pemisah antar kubus, konsisten kaya di demo
   if (!hexOrEmpty) {
-    return { color: '#bfe3f0', opacity: 0.14, strokeColor: '#64748b', strokeOp: 0.75 };
+    return { color: '#bfe3f0', opacity: 0.14, strokeColor: navy, strokeOp: 0.9 };
   }
-  return { color: hexOrEmpty, opacity: 1, strokeColor: p3dShadeColor(hexOrEmpty, -65), strokeOp: 1 };
+  return { color: hexOrEmpty, opacity: 1, strokeColor: navy, strokeOp: 1 };
 }
 
 function p3dCubePolygons(x, y, z, colorInfo, drawFlags) {
@@ -3385,7 +3386,7 @@ function petaRender3D(binLetter) {
   cubes.forEach(function(c) {
     var faces = p3dCubePolygons(c.x, c.y, c.z, c.colorInfo, { top:c.drawTop, faceX:c.drawFaceX, faceY:c.drawFaceY });
     faces.forEach(function(f) {
-      svgParts.push('<polygon points="'+f.pts+'" fill="'+f.fill+'" fill-opacity="'+f.op+'" stroke="'+f.stroke+'" stroke-opacity="'+f.strokeOp+'" stroke-width="1.6" style="cursor:pointer;" '
+      svgParts.push('<polygon points="'+f.pts+'" fill="'+f.fill+'" fill-opacity="'+f.op+'" stroke="'+f.stroke+'" stroke-opacity="'+f.strokeOp+'" stroke-width="2.3" style="cursor:pointer;" '
         + 'onclick="petaTap3DPos('+c.binIdx+')" '
         + 'onmouseenter="petaHover3D(event,'+c.binIdx+')" onmouseleave="petaHoverOut3D()"'
       + '/>');
