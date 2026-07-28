@@ -1674,23 +1674,32 @@ function authDoLogin() {
   var errEl = document.getElementById('auth-login-error');
   var btn = document.getElementById('auth-login-btn');
   errEl.style.display = 'none';
-  if (!username || !password) { errEl.textContent = 'Isi username dan password'; errEl.style.display = 'block'; return; }
+  if (!username || !password) {
+    errEl.textContent = 'Isi username dan password';
+    errEl.style.display = 'block';
+    showToast('⚠️ Isi username dan password');
+    return;
+  }
 
   btn.disabled = true; btn.textContent = 'Memproses...';
   gasCall('loginUser', { username: username, password: password }, function(res) {
     btn.disabled = false; btn.textContent = 'Masuk';
     if (!res || !res.ok) {
-      errEl.textContent = (res && res.msg) || 'Login gagal';
+      var msg = (res && res.msg) || 'Login gagal';
+      errEl.textContent = msg;
       errEl.style.display = 'block';
+      showToast('❌ ' + msg, 3000);
       return;
     }
     _authSaveSession({ username: res.username, nama: res.nama, role: res.role, token: res.token });
     document.getElementById('auth-login-password').value = '';
+    showToast('✅ Berhasil masuk — selamat datang, ' + (res.nama || res.username));
     _startAppAfterAuth();
   }, function() {
     btn.disabled = false; btn.textContent = 'Masuk';
     errEl.textContent = 'Gagal terhubung ke server';
     errEl.style.display = 'block';
+    showToast('❌ Gagal terhubung ke server', 3000);
   });
 }
 
@@ -1703,19 +1712,33 @@ function authDoRegister() {
   var btn = document.getElementById('auth-daftar-btn');
   errEl.style.display = 'none';
   okEl.style.display = 'none';
-  if (!nama || !username || !password) { errEl.textContent = 'Semua field wajib diisi'; errEl.style.display = 'block'; return; }
-  if (password.length < 4) { errEl.textContent = 'Password minimal 4 karakter'; errEl.style.display = 'block'; return; }
+  if (!nama || !username || !password) {
+    errEl.textContent = 'Semua field wajib diisi';
+    errEl.style.display = 'block';
+    showToast('⚠️ Semua field wajib diisi');
+    return;
+  }
+  if (password.length < 4) {
+    errEl.textContent = 'Password minimal 4 karakter';
+    errEl.style.display = 'block';
+    showToast('⚠️ Password minimal 4 karakter');
+    return;
+  }
 
   btn.disabled = true; btn.textContent = 'Memproses...';
   gasCall('registerUser', { nama: nama, username: username, password: password }, function(res) {
     btn.disabled = false; btn.textContent = 'Daftar';
     if (!res || !res.ok) {
-      errEl.textContent = (res && res.msg) || 'Pendaftaran gagal';
+      var msg = (res && res.msg) || 'Pendaftaran gagal';
+      errEl.textContent = msg;
       errEl.style.display = 'block';
+      showToast('❌ ' + msg, 3000);
       return;
     }
     okEl.textContent = '✅ ' + res.msg;
     okEl.style.display = 'block';
+    showToast('✅ ' + res.msg, 3500);
+    window.scrollTo(0, 0);
     document.getElementById('auth-daftar-nama').value = '';
     document.getElementById('auth-daftar-username').value = '';
     document.getElementById('auth-daftar-password').value = '';
@@ -1723,6 +1746,7 @@ function authDoRegister() {
     btn.disabled = false; btn.textContent = 'Daftar';
     errEl.textContent = 'Gagal terhubung ke server';
     errEl.style.display = 'block';
+    showToast('❌ Gagal terhubung ke server', 3000);
   });
 }
 
@@ -1733,6 +1757,7 @@ function authLogout() {
 // Dipanggil setelah auth berhasil (baik dari session tersimpan maupun baru login)
 function _startAppAfterAuth() {
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  window.scrollTo(0, 0); // reset scroll dari screen-auth sebelum tampilkan app
 
   var badge = document.getElementById('auth-user-badge');
   if (badge && _currentUser) badge.textContent = '👤 ' + (_currentUser.nama || _currentUser.username);
@@ -1741,6 +1766,7 @@ function _startAppAfterAuth() {
     document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
     var el = document.getElementById('screen-tipe');
     if (el) el.classList.add('active');
+    window.scrollTo(0, 0);
   }
 
   var forceFallback = setTimeout(goToMain, 1500);
@@ -1822,6 +1848,7 @@ function showScreen(id) {
     s.classList.remove('active');
   });
   document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0); // reset posisi scroll — cegah "nyangkut" di tengah dari screen sebelumnya
   if (id === 'screen-search') {
     // handled by setSearchTipe
   }
