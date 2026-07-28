@@ -3155,10 +3155,35 @@ function _peta3DLoadGroups() {
     _peta3DGroups = res.groups || [];
     _peta3DAfterGroupsLoaded();
   }, function(e) {
-    var reason = (e && e.msg) ? e.msg : 'Koneksi gagal / server tidak merespons';
+    // e bisa berupa {msg:...} dari server ATAU native JS Error (exception di kode render) — tampilkan apa adanya
+    var reason = (e && e.msg) ? e.msg : (e && e.message) ? ('Bug di kode: ' + e.message) : 'Koneksi gagal / server tidak merespons';
     document.getElementById('peta-map-wrap').innerHTML =
       '<div style="padding:40px;text-align:center;color:#ef4444;font-size:12px">❌ Gagal memuat struktur rak<br><span style="color:var(--muted);font-size:10px">' + escHtml(reason) + '</span><br>'
-      + '<button onclick="_peta3DGroups=null;_peta3DLoadGroups();" style="margin-top:10px;padding:6px 14px;border:1px solid #ef444440;border-radius:8px;background:#ef444415;color:#ef4444;font-size:11px;font-weight:700;cursor:pointer;">🔄 Coba Lagi</button></div>';
+      + '<button onclick="_peta3DGroups=null;_peta3DLoadGroups();" style="margin-top:10px;padding:6px 14px;border:1px solid #ef444440;border-radius:8px;background:#ef444415;color:#ef4444;font-size:11px;font-weight:700;cursor:pointer;">🔄 Coba Lagi</button> '
+      + '<button onclick="petaDebugRaw3D()" style="margin-top:10px;padding:6px 14px;border:1px solid #64748b40;border-radius:8px;background:#64748b15;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;">🔍 Lihat Respons Mentah</button></div>';
+  });
+}
+
+// Debug — fetch action getBinCap3D langsung, tampilkan teks mentah apa adanya
+// (tanpa parsing JSON) supaya kelihatan kalau server balikin HTML error / timeout page
+function petaDebugRaw3D() {
+  var authToken = _authGetToken();
+  var url = GAS_URL + '?action=getBinCap3D&_t=' + Date.now() + '&token=' + encodeURIComponent(authToken || '');
+  document.getElementById('peta-map-wrap').innerHTML =
+    '<div style="padding:20px;font-size:11px;color:var(--muted);">⏳ Mengambil respons mentah...</div>';
+  fetch(url, { redirect: 'follow', cache: 'no-store' })
+  .then(function(r) { return r.text().then(function(t){ return { status: r.status, text: t }; }); })
+  .then(function(res) {
+    document.getElementById('peta-map-wrap').innerHTML =
+      '<div style="padding:16px;font-size:11px;">'
+      + '<div style="font-weight:800;margin-bottom:6px;">HTTP Status: ' + res.status + '</div>'
+      + '<div style="background:#111827;color:#4ade80;padding:12px;border-radius:8px;font-family:monospace;font-size:10px;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow:auto;text-align:left;">' + escHtml(res.text.substring(0, 2000)) + '</div>'
+      + '<button onclick="_peta3DGroups=null;_peta3DLoadGroups();" style="margin-top:10px;padding:6px 14px;border:1px solid #ef444440;border-radius:8px;background:#ef444415;color:#ef4444;font-size:11px;font-weight:700;cursor:pointer;">🔄 Kembali</button>'
+      + '</div>';
+  })
+  .catch(function(err) {
+    document.getElementById('peta-map-wrap').innerHTML =
+      '<div style="padding:20px;color:#ef4444;font-size:11px;">❌ fetch() gagal total: ' + escHtml(String(err && err.message || err)) + '</div>';
   });
 }
 
@@ -3370,7 +3395,7 @@ function petaRender3D(binLetter) {
   // ── Nomor posisi — di garis depan-bawah tiap kolom, biar kelihatan row berapa ──
   for (var lx = 0; lx < nx; lx++) {
     var lp = p3dIsoProject(lx + 0.5, ny, 0); // titik depan-bawah kolom ini
-    svgParts.push('<text x="'+lp.x.toFixed(1)+'" y="'+(lp.y+13).toFixed(1)+'" font-size="9" font-weight="700" fill="#475569" text-anchor="middle" font-family="monospace">'+(group.rowFrom+lx)+'</text>');
+    svgParts.push('<text x="'+lp.x.toFixed(1)+'" y="'+(lp.y+13).toFixed(1)+'" font-size="9" font-weight="700" fill="#475569" text-anchor="middle" font-family="monospace">'+(origin+lx)+'</text>');
   }
 
   svgParts.push('</svg>');
