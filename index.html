@@ -1242,9 +1242,14 @@ input:focus, select:focus {
         <div class="peta-legend-item"><div class="peta-legend-dot peta-red"></div>100–110%</div>
         <div class="peta-legend-item"><div class="peta-legend-dot peta-brown"></div>&gt;110%</div>
         <div style="margin-left:auto;display:flex;gap:6px;">
+          <button onclick="petaToggle3D()" id="peta-3d-toggle-btn" style="padding:5px 12px;border:1px solid #9333ea40;border-radius:8px;background:#9333ea15;color:#9333ea;font-size:10px;font-weight:700;cursor:pointer;">🧊 3D</button>
           <button onclick="openCapEditor()" style="padding:5px 12px;border:1px solid #f59e0b40;border-radius:8px;background:#f59e0b15;color:#b45309;font-size:10px;font-weight:700;cursor:pointer;">⚙️ Kapasitas</button>
           <button onclick="petaRefresh()" id="peta-refresh-btn" style="padding:5px 12px;border:1px solid #3b82f640;border-radius:8px;background:#3b82f615;color:#3b82f6;font-size:10px;font-weight:700;cursor:pointer">🔄 Refresh</button>
         </div>
+      </div>
+      <div id="peta-3d-rack-selector" style="display:none;padding:8px 2px 12px;">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:6px;">Pilih Rak</div>
+        <div id="peta-3d-rack-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
       </div>
       <div class="peta-scroll-wrap">
         <div id="peta-map-wrap" class="peta-map-wrap">
@@ -2941,7 +2946,18 @@ function saveCapEditor() {
 function petaRefresh() {
   _petaLoaded = false;
   _petaData   = null;
-  petaLoadMap();
+  _peta3DGroups = null; // paksa refetch struktur LEVEL/DEPTH juga
+  if (_peta3DMode) {
+    gasCall('getBinCurrentLite', null, function(data) {
+      _petaData = data || [];
+      _petaLoaded = true;
+      _peta3DLoadGroups();
+    }, function() {
+      showToast('❌ Gagal refresh data');
+    });
+  } else {
+    petaLoadMap();
+  }
 }
 
 function petaLoadMap() {
@@ -3040,6 +3056,254 @@ function petaRenderMap(rawData) {
   }
 }
 
+// ═══════════════════════════════════════
+// PETA 3D — isometric per-rak, kapasitas dari BIN_CAP kolom I-L (BIN/ROW/LEVEL/DEPTH)
+// Urutan isi: level PALING ATAS duluan, dalam 1 level posisi PALING BELAKANG duluan.
+// ═══════════════════════════════════════
+var _peta3DMode      = false;
+var _peta3DGroups    = null; // cache dari getBinCap3D
+var _peta3DSelected  = null; // huruf bin yang lagi dipilih, misal 'A'
+var _peta3DSelectedPosIdx = null; // index posisi yang di-tap (0-based), null = tidak ada
+
+var P3D_TILE_W = 30, P3D_TILE_H = 17;
+var P3D_LEVEL_H = Math.sqrt(Math.pow(P3D_TILE_W/2, 2) + Math.pow(P3D_TILE_H/2, 2)) * 1.12;
+
+function p3dIsoProject(x, y, z) {
+  return {
+    x: (x - y) * (P3D_TILE_W / 2),
+    y: (x + y) * (P3D_TILE_H / 2) - z * P3D_LEVEL_H
+  };
+}
+
+function p3dShadeColor(hex, percent) {
+  var num = parseInt(hex.slice(1), 16);
+  var r = Math.max(0, Math.min(255, (num >> 16) + percent));
+  var g = Math.max(0, Math.min(255, ((num >> 8) & 0xff) + percent));
+  var b = Math.max(0, Math.min(255, (num & 0xff) + percent));
+  return '#' + ((1<<24) + (r<<16) + (g<<8) + b).toString(16).slice(1);
+}
+
+function p3dColorInfo(hexOrEmpty) {
+  if (!hexOrEmpty) {
+    return { color: '#bfe3f0', opacity: 0.14, strokeColor: '#64748b', strokeOp: 0.75 };
+  }
+  return { color: hexOrEmpty, opacity: 1, strokeColor: p3dShadeColor(hexOrEmpty, -65), strokeOp: 1 };
+}
+
+function p3dCubePolygons(x, y, z, colorInfo, drawFlags) {
+  var p = {};
+  p.top_fl = p3dIsoProject(x,   y,   z+1);
+  p.top_fr = p3dIsoProject(x+1, y,   z+1);
+  p.top_bl = p3dIsoProject(x,   y+1, z+1);
+  p.top_br = p3dIsoProject(x+1, y+1, z+1);
+  p.bot_fl = p3dIsoProject(x,   y,   z);
+  p.bot_fr = p3dIsoProject(x+1, y,   z);
+  p.bot_bl = p3dIsoProject(x,   y+1, z);
+  p.bot_br = p3dIsoProject(x+1, y+1, z);
+  function pts(arr) { return arr.map(function(pt){ return pt.x.toFixed(1)+','+pt.y.toFixed(1); }).join(' '); }
+
+  var shadeTop = colorInfo.color;
+  var shadeX   = p3dShadeColor(colorInfo.color, -40);
+  var shadeY   = p3dShadeColor(colorInfo.color, -22);
+
+  var faces = [];
+  if (drawFlags.top)   faces.push({ pts: pts([p.top_fl,p.top_fr,p.top_br,p.top_bl]), fill: shadeTop, op: colorInfo.opacity, stroke: colorInfo.strokeColor, strokeOp: colorInfo.strokeOp });
+  if (drawFlags.faceX) faces.push({ pts: pts([p.top_fr,p.top_br,p.bot_br,p.bot_fr]), fill: shadeX,   op: colorInfo.opacity, stroke: colorInfo.strokeColor, strokeOp: colorInfo.strokeOp });
+  if (drawFlags.faceY) faces.push({ pts: pts([p.top_bl,p.top_br,p.bot_br,p.bot_bl]), fill: shadeY,   op: colorInfo.opacity, stroke: colorInfo.strokeColor, strokeOp: colorInfo.strokeOp });
+  return faces;
+}
+
+function petaToggle3D() {
+  _peta3DMode = !_peta3DMode;
+  var btn = document.getElementById('peta-3d-toggle-btn');
+  var selector = document.getElementById('peta-3d-rack-selector');
+  if (_peta3DMode) {
+    btn.style.background = '#9333ea';
+    btn.style.color = '#fff';
+    btn.textContent = '📄 2D';
+    selector.style.display = 'block';
+    _peta3DLoadGroups();
+  } else {
+    btn.style.background = '#9333ea15';
+    btn.style.color = '#9333ea';
+    btn.textContent = '🧊 3D';
+    selector.style.display = 'none';
+    _peta3DSelectedPosIdx = null;
+    petaRenderMap(_petaData || []);
+  }
+}
+
+function _peta3DLoadGroups() {
+  document.getElementById('peta-map-wrap').innerHTML =
+    '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">⏳ Memuat struktur rak...</div>';
+  if (_peta3DGroups) { _peta3DAfterGroupsLoaded(); return; }
+  gasCall('getBinCap3D', {}, function(res) {
+    _peta3DGroups = (res && res.groups) ? res.groups : [];
+    _peta3DAfterGroupsLoaded();
+  }, function() {
+    document.getElementById('peta-map-wrap').innerHTML =
+      '<div style="padding:40px;text-align:center;color:#ef4444;font-size:12px">❌ Gagal memuat struktur rak (BIN_CAP kolom I-L)</div>';
+  });
+}
+
+function _peta3DAfterGroupsLoaded() {
+  var chipsEl = document.getElementById('peta-3d-rack-chips');
+  if (!_peta3DGroups || !_peta3DGroups.length) {
+    chipsEl.innerHTML = '';
+    document.getElementById('peta-map-wrap').innerHTML =
+      '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">Belum ada data LEVEL/DEPTH di BIN_CAP kolom I-L</div>';
+    return;
+  }
+  if (!_peta3DSelected) _peta3DSelected = _peta3DGroups[0].bin;
+  chipsEl.innerHTML = _peta3DGroups.map(function(g) {
+    var sel = g.bin === _peta3DSelected;
+    return '<div onclick="petaSelect3DRack(\'' + g.bin + '\')" style="padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800;'
+      + (sel ? 'background:#9333ea;color:#fff;' : 'background:var(--surface2);color:var(--muted);border:1px solid var(--border);')
+      + '">' + g.bin + '</div>';
+  }).join('');
+  petaRender3D(_peta3DSelected);
+}
+
+function petaSelect3DRack(bin) {
+  _peta3DSelected = bin;
+  _peta3DSelectedPosIdx = null; // reset selection posisi saat ganti rak
+  _peta3DAfterGroupsLoaded();
+}
+
+function petaTap3DPos(posIdx) {
+  var group = (_peta3DGroups || []).find(function(g) { return g.bin === _peta3DSelected; });
+  if (!group) return;
+  var binCode = _peta3DSelected + String(group.rowFrom + posIdx).padStart(2, '0');
+
+  if (_peta3DSelectedPosIdx === posIdx) {
+    // Tap posisi yang sama lagi → batalkan pilihan
+    _peta3DSelectedPosIdx = null;
+    petaRender3D(_peta3DSelected);
+    petaClosePopup();
+    return;
+  }
+
+  _peta3DSelectedPosIdx = posIdx;
+  petaRender3D(_peta3DSelected);
+  petaShowPopup(binCode);
+}
+
+function petaRender3D(binLetter) {
+  var group = (_peta3DGroups || []).find(function(g) { return g.bin === binLetter; });
+  var wrap = document.getElementById('peta-map-wrap');
+  if (!group) { wrap.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">Rak tidak ditemukan</div>'; return; }
+
+  var nx = group.rowTo - group.rowFrom + 1;
+  var ny = group.depth;
+  var nz = group.level;
+
+  // Agregasi occupancy per posisi bin (pakai data _petaData yang sudah ada)
+  var binMap = {};
+  (_petaData || []).forEach(function(r) {
+    if (!binMap[r.binLoc]) binMap[r.binLoc] = { used: 0, tipeCounts: {} };
+    var pecList = (r.pecahan_list && r.pecahan_list.length > 0) ? r.pecahan_list : ((r.pecahan||0) > 0 ? [r.pecahan] : []);
+    binMap[r.binLoc].used += (r.pallet || 0) + pecList.length;
+    var tp = String(r.tipe || 'LOKAL').toUpperCase();
+    binMap[r.binLoc].tipeCounts[tp] = (binMap[r.binLoc].tipeCounts[tp] || 0) + 1;
+  });
+
+  // Hitung filled-set per posisi: level PALING ATAS duluan, lalu depth PALING BELAKANG duluan
+  var filledSet = {}; // key 'x_y_z' -> true
+  var colorMap  = {}; // key 'x' -> warna (LOKAL/EKSPOR)
+  for (var xi = 0; xi < nx; xi++) {
+    var binCode = binLetter + String(group.rowFrom + xi).padStart(2, '0');
+    var info = binMap[binCode];
+    var capacity = ny * nz;
+    var used = info ? info.used : 0;
+    var fillCount = Math.min(Math.round(used), capacity);
+
+    var color = '#f97316'; // default LOKAL
+    if (info) {
+      var isEkspor = (info.tipeCounts['EKSPOR'] || 0) > (info.tipeCounts['LOKAL'] || 0);
+      color = isEkspor ? '#3b82f6' : '#f97316';
+    }
+    colorMap[xi] = color;
+
+    var order = [];
+    for (var z = nz - 1; z >= 0; z--) {
+      for (var y = ny - 1; y >= 0; y--) {
+        order.push([y, z]);
+      }
+    }
+    for (var i = 0; i < fillCount && i < order.length; i++) {
+      filledSet[xi + '_' + order[i][0] + '_' + order[i][1]] = true;
+    }
+  }
+
+  function isFilledAt(x, y, z) {
+    if (x < 0 || x >= nx || y < 0 || y >= ny || z < 0 || z >= nz) return false;
+    return !!filledSet[x + '_' + y + '_' + z];
+  }
+
+  var t0 = performance.now();
+  var cubes = [];
+  for (var z2 = 0; z2 < nz; z2++) {
+    for (var y2 = 0; y2 < ny; y2++) {
+      for (var x2 = 0; x2 < nx; x2++) {
+        var selfFilled = isFilledAt(x2, y2, z2);
+        var drawTop   = !(selfFilled && isFilledAt(x2, y2, z2+1));
+        var drawFaceX = !(selfFilled && isFilledAt(x2+1, y2, z2));
+        var drawFaceY = !(selfFilled && isFilledAt(x2, y2+1, z2));
+        if (!drawTop && !drawFaceX && !drawFaceY) continue;
+        var color = selfFilled ? colorMap[x2] : null;
+        var cInfo = p3dColorInfo(color);
+        // Kalau ada posisi yang dipilih, redupkan semua posisi LAIN
+        if (_peta3DSelectedPosIdx !== null && x2 !== _peta3DSelectedPosIdx) {
+          cInfo = { color: cInfo.color, opacity: cInfo.opacity * 0.16, strokeColor: cInfo.strokeColor, strokeOp: cInfo.strokeOp * 0.35 };
+        }
+        cubes.push({ x:x2, y:y2, z:z2, colorInfo: cInfo, drawTop:drawTop, drawFaceX:drawFaceX, drawFaceY:drawFaceY, binIdx:x2 });
+      }
+    }
+  }
+  cubes.sort(function(a, b) { return (a.x + a.y - a.z) - (b.x + b.y - b.z); });
+
+  var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  cubes.forEach(function(c) {
+    for (var dz=0; dz<=1; dz++) for (var dy=0; dy<=1; dy++) for (var dx=0; dx<=1; dx++) {
+      var p = p3dIsoProject(c.x+dx, c.y+dy, c.z+dz);
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+    }
+  });
+  var pad = 30;
+  var w = maxX - minX + pad*2, h = maxY - minY + pad*2;
+
+  var svgParts = [];
+  svgParts.push('<svg width="'+w+'" height="'+h+'" viewBox="'+(minX-pad)+' '+(minY-pad)+' '+w+' '+h+'" style="background:#fff;border-radius:10px;">');
+
+  var shadowCenterX = (minX + maxX) / 2;
+  var shadowY = maxY + 6;
+  var shadowW = (maxX - minX) * 0.92;
+  svgParts.push('<ellipse cx="'+shadowCenterX.toFixed(1)+'" cy="'+shadowY.toFixed(1)+'" rx="'+(shadowW/2).toFixed(1)+'" ry="'+(P3D_TILE_H*0.55).toFixed(1)+'" fill="#000" opacity="0.08"/>');
+
+  var polyCount = 0;
+  cubes.forEach(function(c) {
+    var faces = p3dCubePolygons(c.x, c.y, c.z, c.colorInfo, { top:c.drawTop, faceX:c.drawFaceX, faceY:c.drawFaceY });
+    faces.forEach(function(f) {
+      svgParts.push('<polygon points="'+f.pts+'" fill="'+f.fill+'" fill-opacity="'+f.op+'" stroke="'+f.stroke+'" stroke-opacity="'+f.strokeOp+'" stroke-width="1.6" style="cursor:pointer;" onclick="petaTap3DPos('+c.binIdx+')"/>');
+      polyCount++;
+    });
+  });
+  svgParts.push('</svg>');
+
+  var infoBar = '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px 10px;font-size:10px;color:var(--muted);">'
+    + '<span>Rak <b style="color:var(--text)">' + binLetter + '</b> · '
+    + nx + ' posisi · ' + nz + ' level × ' + ny + ' depth</span>'
+    + '<span style="display:flex;gap:10px;">'
+      + '<span><span style="display:inline-block;width:9px;height:9px;background:#f97316;border-radius:2px;margin-right:3px;"></span>Lokal</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;background:#3b82f6;border-radius:2px;margin-right:3px;"></span>Ekspor</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;background:#bfe3f0;border:1px solid #64748b;border-radius:2px;margin-right:3px;"></span>Kosong</span>'
+    + '</span>'
+  + '</div>';
+
+  wrap.innerHTML = infoBar + '<div style="overflow-x:auto;">' + svgParts.join('') + '</div>';
+}
+
 function petaShowPopup(bin) {
   var cap   = petaCapacity(bin);
   var items = [];
@@ -3093,6 +3357,10 @@ function petaShowPopup(bin) {
 
 function petaClosePopup() {
   document.getElementById('petaOverlay').classList.remove('show');
+  if (_peta3DMode && _peta3DSelectedPosIdx !== null) {
+    _peta3DSelectedPosIdx = null;
+    petaRender3D(_peta3DSelected);
+  }
 }
 
 
