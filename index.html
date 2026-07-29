@@ -3165,10 +3165,19 @@ function p3dCubePolygons(x, y, z, colorInfo, drawFlags) {
   var edges = [];
   if (isFilled) {
     edges = [
-      { p1: p.bot_bl, p2: p.top_bl }, // kiri
-      { p1: p.bot_br, p2: p.top_br }, // tengah-depan
-      { p1: p.bot_fr, p2: p.top_fr }  // kanan
+      { p1: p.bot_bl, p2: p.top_bl, w: P3D_RACK_WIDTH }, // kiri
+      { p1: p.bot_br, p2: p.top_br, w: P3D_RACK_WIDTH }, // tengah-depan
+      { p1: p.bot_fr, p2: p.top_fr, w: P3D_RACK_WIDTH }  // kanan
     ];
+    // Garis diagonal dekorasi di sisi depan (faceY) — warna sama rangka, lebih tipis dari
+    // tiang (P3D_RACK_WIDTH) tapi lebih tebal dari stroke hitam pemisah kotak (0.5).
+    // Level ganjil & depth ganjil → miring kiri ("/"), selain itu → miring kanan ("\").
+    var levelGanjil = (z % 2) === 1;
+    var depthGanjil = (y % 2) === 1;
+    var miringKiri = levelGanjil && depthGanjil;
+    var decorP1 = miringKiri ? p.top_br : p.top_bl;
+    var decorP2 = miringKiri ? p.bot_bl : p.bot_br;
+    edges.push({ p1: decorP1, p2: decorP2, w: 1.4 });
   }
 
   return { faces: faces, edges: edges };
@@ -3526,7 +3535,7 @@ function petaRender3D(binLetter) {
       + '/>');
     });
     result.edges.forEach(function(e) {
-      svgParts.push('<line x1="'+e.p1.x.toFixed(1)+'" y1="'+e.p1.y.toFixed(1)+'" x2="'+e.p2.x.toFixed(1)+'" y2="'+e.p2.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+P3D_RACK_WIDTH+'" style="pointer-events:none;"/>');
+      svgParts.push('<line x1="'+e.p1.x.toFixed(1)+'" y1="'+e.p1.y.toFixed(1)+'" x2="'+e.p2.x.toFixed(1)+'" y2="'+e.p2.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+e.w+'" style="pointer-events:none;"/>');
     });
   });
 
