@@ -3095,7 +3095,7 @@ var P3D_MONTH_COLOR = {
   'jan': '#ff0000', 'feb': '#ff0000',
   'mar': '#f7ff00', 'apr': '#f7ff00',
   'may': '#19e619', 'jun': '#19e619',
-  'jul': '#0000ff', 'aug': '#0000ff',
+  'jul': '#3b82f6', 'aug': '#3b82f6',
   'sep': '#f97316', 'oct': '#f97316',
   'nov': '#efefef', 'dec': '#efefef'
 };
@@ -3452,10 +3452,10 @@ function petaRender3D(binLetter) {
   ].map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
   svgParts.push('<polygon points="'+floorPts+'" fill="#dde3ea" stroke="#94a3b8" stroke-width="1.5"/>');
 
-  // ── Rangka rak — tiang PER-LEVEL + zigzag per level, digambar DI BELAKANG (duluan),
-  // sebelum kotak — jadi slot terisi otomatis nutupin rangka di baliknya, slot kosong
-  // menampakkan rangka aslinya. Tiap batas-X ambil depth/level MAKSIMUM dari 2 kolom
-  // tetangganya (biar tetap menaungi kedua sisi walau depth beda).
+  // ── Rangka rak — tiang PER-LEVEL + zigzag per level. SEKARANG digabung ke urutan
+  // depth-sort YANG SAMA dengan kotak (bukan "semua rangka duluan"), jadi tiap elemen
+  // rangka bisa di-depan/di-belakang kotak tertentu sesuai posisi 3D aslinya — seperti
+  // "bring forward/send backward" di PowerPoint, otomatis konsisten secara 3D.
   function depthAtBoundary(bx) {
     var a = bx > 0 ? (nyByX[bx-1] || 0) : 0;
     var b = bx < nx ? (nyByX[bx] || 0) : 0;
@@ -3466,25 +3466,43 @@ function petaRender3D(binLetter) {
     var b = bx < nx ? (nzByX[bx] || 0) : 0;
     return Math.max(a, b);
   }
+  var renderList = cubes.slice(); // salinan — kubus (termasuk yang invisible) + elemen rangka digabung di sini
   for (var fx = 0; fx <= nx; fx++) {
     var fDepth = depthAtBoundary(fx), fLevel = levelAtBoundary(fx);
     for (var fy = 0; fy <= fDepth; fy++) {
       for (var fzL = 0; fzL < fLevel; fzL++) {
-        var fpBot = p3dIsoProject(fx, fy, fzL), fpTop = p3dIsoProject(fx, fy, fzL+1);
-        svgParts.push('<line x1="'+fpBot.x.toFixed(1)+'" y1="'+fpBot.y.toFixed(1)+'" x2="'+fpTop.x.toFixed(1)+'" y2="'+fpTop.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+P3D_RACK_WIDTH+'"/>');
+        renderList.push({ frameType:'post', fx:fx, fy:fy, fzL:fzL, depth: fx + fy - fzL - 0.5 });
       }
     }
     for (var fy2 = 0; fy2 < fDepth; fy2++) {
       for (var fzz = 0; fzz < fLevel; fzz++) {
-        var fflip = fzz % 2 === 0;
-        var ffrom = fflip ? p3dIsoProject(fx, fy2, fzz)   : p3dIsoProject(fx, fy2, fzz+1);
-        var fto   = fflip ? p3dIsoProject(fx, fy2+1, fzz+1) : p3dIsoProject(fx, fy2+1, fzz);
-        svgParts.push('<line x1="'+ffrom.x.toFixed(1)+'" y1="'+ffrom.y.toFixed(1)+'" x2="'+fto.x.toFixed(1)+'" y2="'+fto.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+P3D_RACK_WIDTH+'"/>');
+        renderList.push({ frameType:'zigzag', fx:fx, fy2:fy2, fzz:fzz, depth: fx + fy2 - fzz - 0.5 });
       }
     }
   }
+  // Kubus (terisi/invisible) dikasih depth key SAMA seperti sebelumnya (x+y-z), tapi kotak
+  // terisi diberi sedikit prioritas (+0.4) supaya menang dibanding rangka tepat di posisinya
+  // sendiri, sementara rangka di posisi TETANGGA (x beda) tetap urut alami sesuai jaraknya.
+  renderList.forEach(function(item) {
+    if (item.frameType) return; // sudah ada depth
+    item.depth = (item.x + item.y - item.z) + (item.invisible ? 0 : 0.4);
+  });
+  renderList.sort(function(a, b) { return a.depth - b.depth; });
 
-  cubes.forEach(function(c) {
+  renderList.forEach(function(item) {
+    if (item.frameType === 'post') {
+      var fpBot = p3dIsoProject(item.fx, item.fy, item.fzL), fpTop = p3dIsoProject(item.fx, item.fy, item.fzL+1);
+      svgParts.push('<line x1="'+fpBot.x.toFixed(1)+'" y1="'+fpBot.y.toFixed(1)+'" x2="'+fpTop.x.toFixed(1)+'" y2="'+fpTop.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+P3D_RACK_WIDTH+'"/>');
+      return;
+    }
+    if (item.frameType === 'zigzag') {
+      var fflip = item.fzz % 2 === 0;
+      var ffrom = fflip ? p3dIsoProject(item.fx, item.fy2, item.fzz)   : p3dIsoProject(item.fx, item.fy2, item.fzz+1);
+      var fto   = fflip ? p3dIsoProject(item.fx, item.fy2+1, item.fzz+1) : p3dIsoProject(item.fx, item.fy2+1, item.fzz);
+      svgParts.push('<line x1="'+ffrom.x.toFixed(1)+'" y1="'+ffrom.y.toFixed(1)+'" x2="'+fto.x.toFixed(1)+'" y2="'+fto.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+P3D_RACK_WIDTH+'"/>');
+      return;
+    }
+    var c = item;
     if (c.invisible) {
       // Sel kosong — kotak transparan kecil (1 unit), diurutkan bareng kubus asli via
       // depth-sort yang sama, jadi tidak akan pernah nyerempet nutupin kolom lain.
@@ -3531,7 +3549,7 @@ function petaRender3D(binLetter) {
       + '<span><span style="display:inline-block;width:9px;height:9px;background:#ff0000;border-radius:2px;margin-right:3px;"></span>Jan-Feb</span>'
       + '<span><span style="display:inline-block;width:9px;height:9px;background:#f7ff00;border:1px solid #d4d400;border-radius:2px;margin-right:3px;"></span>Mar-Apr</span>'
       + '<span><span style="display:inline-block;width:9px;height:9px;background:#19e619;border-radius:2px;margin-right:3px;"></span>Mei-Jun</span>'
-      + '<span><span style="display:inline-block;width:9px;height:9px;background:#0000ff;border-radius:2px;margin-right:3px;"></span>Jul-Agu</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;background:#3b82f6;border-radius:2px;margin-right:3px;"></span>Jul-Agu</span>'
       + '<span><span style="display:inline-block;width:9px;height:9px;background:#f97316;border-radius:2px;margin-right:3px;"></span>Sep-Okt</span>'
       + '<span><span style="display:inline-block;width:9px;height:9px;background:#efefef;border:1px solid #9ca3af;border-radius:2px;margin-right:3px;"></span>Nov-Des</span>'
     + '</div>'
