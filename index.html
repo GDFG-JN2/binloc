@@ -3291,6 +3291,13 @@ function petaRender3D(binLetter) {
   var maxRow = Math.max.apply(null, segments.map(function(s){ return s.rowTo; }));
   var nx = maxRow - origin + 1;
 
+  // Rak-rak ini row 1 fisiknya mulai dari KANAN (bukan kiri) — jadi arah xi→rowNum dibalik.
+  var P3D_REVERSED_BINS = ['B','D','F','H','I'];
+  var isReversed = P3D_REVERSED_BINS.indexOf(binLetter) !== -1;
+  function rowNumFor(xi) {
+    return isReversed ? (maxRow - xi) : (origin + xi);
+  }
+
   function segmentFor(rowNum) {
     for (var i = 0; i < segments.length; i++) {
       if (rowNum >= segments[i].rowFrom && rowNum <= segments[i].rowTo) return segments[i];
@@ -3301,7 +3308,7 @@ function petaRender3D(binLetter) {
   var nyByX = [], nzByX = [];
   var maxNy = 1, maxNz = 1;
   for (var xi0 = 0; xi0 < nx; xi0++) {
-    var seg = segmentFor(origin + xi0);
+    var seg = segmentFor(rowNumFor(xi0));
     var ny_x = seg ? seg.depth : 0;
     var nz_x = seg ? seg.level : 0;
     nyByX[xi0] = ny_x;
@@ -3328,7 +3335,7 @@ function petaRender3D(binLetter) {
   var colorMap  = {}; // key 'x' -> warna (LOKAL/EKSPOR)
   _peta3DHoverInfo = {};
   for (var xi = 0; xi < nx; xi++) {
-    var rowNum   = origin + xi;
+    var rowNum   = rowNumFor(xi);
     var binCode  = binLetter + rowNum;
     var ny_local = nyByX[xi], nz_local = nzByX[xi];
     var info = binMap[binCode];
@@ -3371,7 +3378,13 @@ function petaRender3D(binLetter) {
       for (var x2 = 0; x2 < nx; x2++) {
         if (!existsAt(x2, y2, z2)) continue; // di luar depth/level posisi ini — tidak ada kubus di sana sama sekali
         var selfFilled = isFilledAt(x2, y2, z2);
-        if (!selfFilled) continue; // kosong = tidak digambar sama sekali, cuma rangka yang kelihatan
+        if (!selfFilled) {
+          // Kosong = tidak digambar (transparan), TAPI tetap sisipkan area klik kecil
+          // di urutan gambar yang SAMA (depth-sort bareng kubus asli) — supaya klik/hover
+          // tidak "nyerempet" ke kolom lain akibat proyeksi iso yang melebar.
+          cubes.push({ x:x2, y:y2, z:z2, invisible:true, binIdx:x2 });
+          continue;
+        }
         // Kotak terisi = ada celah antar kotak (gaya "produk terpisah"), jadi sisi kanan/depan
         // SELALU digambar (tidak pernah ketutup tetangga). Cuma sisi ATAS yang dicek —
         // kalau ada kubus terisi tepat di atasnya, atasnya tidak usah digambar (tersembunyi).
@@ -3413,11 +3426,6 @@ function petaRender3D(binLetter) {
   ].map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
   svgParts.push('<polygon points="'+floorPts+'" fill="#dde3ea" stroke="#94a3b8" stroke-width="1.5"/>');
 
-  var shadowCenterX = (minX + maxX) / 2;
-  var shadowY = maxY + 6;
-  var shadowW = (maxX - minX) * 0.92;
-  svgParts.push('<ellipse cx="'+shadowCenterX.toFixed(1)+'" cy="'+shadowY.toFixed(1)+'" rx="'+(shadowW/2).toFixed(1)+'" ry="'+(P3D_TILE_H*0.55).toFixed(1)+'" fill="#000" opacity="0.10"/>');
-
   // ── Rangka rak — tiang PER-LEVEL + zigzag per level, digambar DI BELAKANG (duluan),
   // sebelum kotak — jadi slot terisi otomatis nutupin rangka di baliknya, slot kosong
   // menampakkan rangka aslinya. Tiap batas-X ambil depth/level MAKSIMUM dari 2 kolom
@@ -3451,6 +3459,21 @@ function petaRender3D(binLetter) {
   }
 
   cubes.forEach(function(c) {
+    if (c.invisible) {
+      // Sel kosong — kotak transparan kecil (1 unit), diurutkan bareng kubus asli via
+      // depth-sort yang sama, jadi tidak akan pernah nyerempet nutupin kolom lain.
+      var x0i=c.x, x1i=c.x+1, y0i=c.y, y1i=c.y+1, z0i=c.z, z1i=c.z+1;
+      var ipts = [
+        p3dIsoProject(x0i,y0i,z1i), p3dIsoProject(x1i,y0i,z1i),
+        p3dIsoProject(x1i,y1i,z1i), p3dIsoProject(x1i,y1i,z0i),
+        p3dIsoProject(x0i,y1i,z0i), p3dIsoProject(x0i,y0i,z0i)
+      ].map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
+      svgParts.push('<polygon points="'+ipts+'" fill="transparent" style="cursor:pointer;" '
+        + 'onclick="petaTap3DPos('+c.binIdx+')" '
+        + 'onmouseenter="petaHover3D(event,'+c.binIdx+')" onmouseleave="petaHoverOut3D()"'
+      + '/>');
+      return;
+    }
     var result = p3dCubePolygons(c.x, c.y, c.z, c.colorInfo, { top:c.drawTop, faceX:c.drawFaceX, faceY:c.drawFaceY });
     result.faces.forEach(function(f) {
       svgParts.push('<polygon points="'+f.pts+'" fill="'+f.fill+'" fill-opacity="'+f.op+'" stroke="'+f.stroke+'" stroke-opacity="'+f.strokeOp+'" stroke-width="'+f.strokeW+'" style="cursor:pointer;" '
@@ -3463,48 +3486,10 @@ function petaRender3D(binLetter) {
     });
   });
 
-  // ── Area klik transparan untuk posisi yang 100% kosong (tidak ada kubus buat di-tap) ──
-  // Pakai convex hull dari 8 sudut kolom (bentuk jajaran genjang asli), BUKAN bounding box
-  // lurus — bounding box terlalu lebar di proyeksi iso dan nyerempet ke kolom tetangga.
-  function p3dConvexHull(pts) {
-    pts = pts.slice().sort(function(a,b){ return a.x - b.x || a.y - b.y; });
-    function cross(o,a,b){ return (a.x-o.x)*(b.y-o.y) - (a.y-o.y)*(b.x-o.x); }
-    var lower = [];
-    for (var i = 0; i < pts.length; i++) {
-      while (lower.length >= 2 && cross(lower[lower.length-2], lower[lower.length-1], pts[i]) <= 0) lower.pop();
-      lower.push(pts[i]);
-    }
-    var upper = [];
-    for (var j = pts.length - 1; j >= 0; j--) {
-      while (upper.length >= 2 && cross(upper[upper.length-2], upper[upper.length-1], pts[j]) <= 0) upper.pop();
-      upper.push(pts[j]);
-    }
-    upper.pop(); lower.pop();
-    return lower.concat(upper);
-  }
-
-  var filledBinIdx = {};
-  cubes.forEach(function(c) { filledBinIdx[c.binIdx] = true; });
-  for (var ei = 0; ei < nx; ei++) {
-    if (filledBinIdx[ei]) continue; // ada isinya, sudah bisa di-tap lewat kubus
-    var eNy = nyByX[ei], eNz = nzByX[ei];
-    if (!eNy || !eNz) continue; // posisi tidak eksis (di luar segmen), skip
-    var eCorners = [];
-    for (var edx=0; edx<=1; edx++) for (var edy=0; edy<=1; edy++) for (var edz=0; edz<=1; edz++) {
-      eCorners.push(p3dIsoProject(ei+edx, edy*eNy, edz*eNz));
-    }
-    var hull = p3dConvexHull(eCorners);
-    var hullPts = hull.map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
-    svgParts.push('<polygon points="'+hullPts+'" fill="transparent" style="cursor:pointer;" '
-      + 'onclick="petaTap3DPos('+ei+')" '
-      + 'onmouseenter="petaHover3D(event,'+ei+')" onmouseleave="petaHoverOut3D()"'
-    + '/>');
-  }
-
   // ── Nomor posisi — di garis depan-bawah tiap kolom, biar kelihatan row berapa ──
   for (var lx = 0; lx < nx; lx++) {
     var lp = p3dIsoProject(lx + 0.5, ny, 0); // titik depan-bawah kolom ini
-    svgParts.push('<text x="'+lp.x.toFixed(1)+'" y="'+(lp.y+13).toFixed(1)+'" font-size="9" font-weight="700" fill="#475569" text-anchor="middle" font-family="monospace">'+(origin+lx)+'</text>');
+    svgParts.push('<text x="'+lp.x.toFixed(1)+'" y="'+(lp.y+13).toFixed(1)+'" font-size="9" font-weight="700" fill="#475569" text-anchor="middle" font-family="monospace">'+rowNumFor(lx)+'</text>');
   }
 
   svgParts.push('</svg>');
