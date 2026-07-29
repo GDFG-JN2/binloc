@@ -3497,7 +3497,7 @@ function petaRender3D(binLetter) {
     if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
   }
   var labelSpace = 26; // ruang tambahan di bawah untuk nomor posisi
-  var pad = 30;
+  var pad = 45; // dinaikkan dikit biar label nama blok di pojok kiri-atas tidak terpotong
   var w = maxX - minX + pad*2;
   var h = maxY - minY + pad*2 + labelSpace;
 
@@ -3602,6 +3602,12 @@ function petaRender3D(binLetter) {
     var lp = p3dIsoProject(lx + 0.5, ny, 0); // titik depan-bawah kolom ini
     svgParts.push('<text x="'+lp.x.toFixed(1)+'" y="'+(lp.y+13).toFixed(1)+'" font-size="9" font-weight="700" fill="#475569" text-anchor="middle" font-family="monospace">'+rowNumFor(lx)+'</text>');
   }
+
+  // ── Label nama blok — pojok kiri-atas-belakang rak, ada garis kecil di bawahnya ──
+  var blockLabelPos = p3dIsoProject(0, 0, nz);
+  var blX = blockLabelPos.x - 8, blY = blockLabelPos.y - 18;
+  svgParts.push('<text x="'+blX.toFixed(1)+'" y="'+blY.toFixed(1)+'" font-size="26" font-weight="900" fill="#111827" font-family="Georgia, serif">'+binLetter+'</text>');
+  svgParts.push('<line x1="'+(blX-6).toFixed(1)+'" y1="'+(blY+6).toFixed(1)+'" x2="'+(blX+22).toFixed(1)+'" y2="'+(blY+2).toFixed(1)+'" stroke="#111827" stroke-width="1.2"/>');
 
   svgParts.push('</svg>');
 
