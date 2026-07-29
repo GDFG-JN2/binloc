@@ -3603,13 +3603,10 @@ function petaRender3D(binLetter) {
     svgParts.push('<text x="'+lp.x.toFixed(1)+'" y="'+(lp.y+13).toFixed(1)+'" font-size="9" font-weight="700" fill="#475569" text-anchor="middle" font-family="monospace">'+rowNumFor(lx)+'</text>');
   }
 
-  // ── Label nama blok — gaya bevel 2-lapis PowerPoint: sisi tebal (terang) + muka depan
-  // (gelap solid) digeser dikit, biar kelihatan balok huruf 3D dengan tepi tegas.
+  // ── Label nama blok — teks datar simpel di pojok kiri-atas-belakang rak ──
   var blockLabelPos = p3dIsoProject(0, 0, nz);
-  var blX = blockLabelPos.x - 30, blY = blockLabelPos.y - 6; // digeser lebih kiri & bawah
-  var bevelDx = 5, bevelDy = 4; // arah & jarak "ketebalan" sisi
-  svgParts.push('<text x="'+(blX+bevelDx).toFixed(1)+'" y="'+(blY+bevelDy).toFixed(1)+'" font-size="32" font-weight="900" fill="#f1f5f9" stroke="#111827" stroke-width="1" font-family="Georgia, serif">'+binLetter+'</text>');
-  svgParts.push('<text x="'+blX.toFixed(1)+'" y="'+blY.toFixed(1)+'" font-size="32" font-weight="900" fill="#111827" stroke="#111827" stroke-width="1" font-family="Georgia, serif">'+binLetter+'</text>');
+  var blX = blockLabelPos.x - 30, blY = blockLabelPos.y - 6;
+  svgParts.push('<text x="'+blX.toFixed(1)+'" y="'+blY.toFixed(1)+'" font-size="28" font-weight="900" fill="#111827" font-family="Georgia, serif">'+binLetter+'</text>');
 
   svgParts.push('</svg>');
 
