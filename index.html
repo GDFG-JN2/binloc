@@ -3389,15 +3389,14 @@ function petaRender3D(binLetter) {
   }
   cubes.sort(function(a, b) { return (a.x + a.y - a.z) - (b.x + b.y - b.z); });
 
-  // Bounding box mencakup kubus + area label nomor di depan
+  // Bounding box mencakup SELURUH rangka (0..nx, 0..ny, 0..nz) — bukan cuma kubus terisi,
+  // karena sekarang posisi kosong tidak lagi punya entri kubus sama sekali.
   var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
-  cubes.forEach(function(c) {
-    for (var dz=0; dz<=1; dz++) for (var dy=0; dy<=1; dy++) for (var dx=0; dx<=1; dx++) {
-      var p = p3dIsoProject(c.x+dx, c.y+dy, c.z+dz);
-      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
-      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
-    }
-  });
+  for (var bbx=0; bbx<=nx; bbx++) for (var bby=0; bby<=ny; bby++) for (var bbz=0; bbz<=nz; bbz++) {
+    var p = p3dIsoProject(bbx, bby, bbz);
+    if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+  }
   var labelSpace = 26; // ruang tambahan di bawah untuk nomor posisi
   var pad = 30;
   var w = maxX - minX + pad*2;
@@ -3407,11 +3406,12 @@ function petaRender3D(binLetter) {
   svgParts.push('<svg viewBox="'+(minX-pad)+' '+(minY-pad)+' '+w+' '+h+'" style="display:block;width:100%;height:auto;">');
 
   // ── Lantai solid — supaya rak tidak kelihatan mengambang, terutama yang kosong ──
+  var floorPad = 0.15; // sedikit lebih lebar dari footprint asli, biar kelihatan jelas kayak alas
   var floorPts = [
-    p3dIsoProject(0, 0, 0), p3dIsoProject(nx, 0, 0),
-    p3dIsoProject(nx, ny, 0), p3dIsoProject(0, ny, 0)
+    p3dIsoProject(-floorPad, -floorPad, 0), p3dIsoProject(nx+floorPad, -floorPad, 0),
+    p3dIsoProject(nx+floorPad, ny+floorPad, 0), p3dIsoProject(-floorPad, ny+floorPad, 0)
   ].map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
-  svgParts.push('<polygon points="'+floorPts+'" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>');
+  svgParts.push('<polygon points="'+floorPts+'" fill="#dde3ea" stroke="#94a3b8" stroke-width="1.5"/>');
 
   var shadowCenterX = (minX + maxX) / 2;
   var shadowY = maxY + 6;
@@ -3464,19 +3464,38 @@ function petaRender3D(binLetter) {
   });
 
   // ── Area klik transparan untuk posisi yang 100% kosong (tidak ada kubus buat di-tap) ──
+  // Pakai convex hull dari 8 sudut kolom (bentuk jajaran genjang asli), BUKAN bounding box
+  // lurus — bounding box terlalu lebar di proyeksi iso dan nyerempet ke kolom tetangga.
+  function p3dConvexHull(pts) {
+    pts = pts.slice().sort(function(a,b){ return a.x - b.x || a.y - b.y; });
+    function cross(o,a,b){ return (a.x-o.x)*(b.y-o.y) - (a.y-o.y)*(b.x-o.x); }
+    var lower = [];
+    for (var i = 0; i < pts.length; i++) {
+      while (lower.length >= 2 && cross(lower[lower.length-2], lower[lower.length-1], pts[i]) <= 0) lower.pop();
+      lower.push(pts[i]);
+    }
+    var upper = [];
+    for (var j = pts.length - 1; j >= 0; j--) {
+      while (upper.length >= 2 && cross(upper[upper.length-2], upper[upper.length-1], pts[j]) <= 0) upper.pop();
+      upper.push(pts[j]);
+    }
+    upper.pop(); lower.pop();
+    return lower.concat(upper);
+  }
+
   var filledBinIdx = {};
   cubes.forEach(function(c) { filledBinIdx[c.binIdx] = true; });
   for (var ei = 0; ei < nx; ei++) {
     if (filledBinIdx[ei]) continue; // ada isinya, sudah bisa di-tap lewat kubus
     var eNy = nyByX[ei], eNz = nzByX[ei];
     if (!eNy || !eNz) continue; // posisi tidak eksis (di luar segmen), skip
-    var eMinX=1e9,eMinY=1e9,eMaxX=-1e9,eMaxY=-1e9;
-    for (var edx=0; edx<=1; edx++) for (var edy=0; edy<=eNy; edy+=eNy) for (var edz=0; edz<=eNz; edz+=eNz) {
-      var ep = p3dIsoProject(ei+edx, edy, edz);
-      if (ep.x<eMinX) eMinX=ep.x; if (ep.x>eMaxX) eMaxX=ep.x;
-      if (ep.y<eMinY) eMinY=ep.y; if (ep.y>eMaxY) eMaxY=ep.y;
+    var eCorners = [];
+    for (var edx=0; edx<=1; edx++) for (var edy=0; edy<=1; edy++) for (var edz=0; edz<=1; edz++) {
+      eCorners.push(p3dIsoProject(ei+edx, edy*eNy, edz*eNz));
     }
-    svgParts.push('<rect x="'+eMinX.toFixed(1)+'" y="'+eMinY.toFixed(1)+'" width="'+(eMaxX-eMinX).toFixed(1)+'" height="'+(eMaxY-eMinY).toFixed(1)+'" fill="transparent" style="cursor:pointer;" '
+    var hull = p3dConvexHull(eCorners);
+    var hullPts = hull.map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
+    svgParts.push('<polygon points="'+hullPts+'" fill="transparent" style="cursor:pointer;" '
       + 'onclick="petaTap3DPos('+ei+')" '
       + 'onmouseenter="petaHover3D(event,'+ei+')" onmouseleave="petaHoverOut3D()"'
     + '/>');
