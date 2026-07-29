@@ -3497,7 +3497,7 @@ function petaRender3D(binLetter) {
     if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
   }
   var labelSpace = 26; // ruang tambahan di bawah untuk nomor posisi
-  var pad = 60; // dinaikkan biar label nama blok (huruf besar 42px) di pojok kiri-atas tidak terpotong
+  var pad = 90; // dinaikkan biar label nama blok (huruf 50px, rotate+skew) tidak terpotong
   var w = maxX - minX + pad*2;
   var h = maxY - minY + pad*2 + labelSpace;
 
@@ -3603,12 +3603,10 @@ function petaRender3D(binLetter) {
     svgParts.push('<text x="'+lp.x.toFixed(1)+'" y="'+(lp.y+13).toFixed(1)+'" font-size="9" font-weight="700" fill="#475569" text-anchor="middle" font-family="monospace">'+rowNumFor(lx)+'</text>');
   }
 
-  // ── Label nama blok — huruf besar sedikit miring (skewX), kesan nempel di sisi gelap
-  // kubus (faceX), dasar huruf (baseline) dekat pojok rak.
+  // ── Label nama blok — nilai final hasil tuning demo (translate/rotate/skewX/size) ──
   var blockLabelPos = p3dIsoProject(0, 0, nz);
-  var blX = blockLabelPos.x - 10, blY = blockLabelPos.y - 6;
-  var skewAngle = -Math.atan2(P3D_TILE_H, P3D_TILE_W) * 180 / Math.PI; // sudut kemiringan ikut rasio sisi kubus
-  svgParts.push('<text x="0" y="0" font-size="42" font-weight="900" fill="#111827" font-family="Georgia, serif" transform="translate('+blX.toFixed(1)+' '+blY.toFixed(1)+') skewX('+skewAngle.toFixed(2)+')">'+binLetter+'</text>');
+  var blX = blockLabelPos.x - 55.0, blY = blockLabelPos.y + 25.96;
+  svgParts.push('<text x="0" y="0" font-size="50" font-weight="900" fill="#111827" font-family="Georgia, serif" transform="translate('+blX.toFixed(1)+' '+blY.toFixed(1)+') rotate(-29) skewX(-31)">'+binLetter+'</text>');
 
   svgParts.push('</svg>');
 
