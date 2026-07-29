@@ -3603,11 +3603,12 @@ function petaRender3D(binLetter) {
     svgParts.push('<text x="'+lp.x.toFixed(1)+'" y="'+(lp.y+13).toFixed(1)+'" font-size="9" font-weight="700" fill="#475569" text-anchor="middle" font-family="monospace">'+rowNumFor(lx)+'</text>');
   }
 
-  // ── Label nama blok — huruf BERDIRI (ikut sumbu Z yang memang lurus vertikal di iso,
-  // tidak perlu skew), diputar 90° berlawanan jarum jam.
+  // ── Label nama blok — sejajar garis atas rak (rotate biasa), dasar huruf (baseline)
+  // ditempelkan dekat sudut rak, cuma dikasih jarak kecil.
   var blockLabelPos = p3dIsoProject(0, 0, nz);
-  var blX = blockLabelPos.x - 10, blY = blockLabelPos.y - 20;
-  svgParts.push('<text x="'+blX.toFixed(1)+'" y="'+blY.toFixed(1)+'" font-size="26" font-weight="900" fill="#111827" font-family="Georgia, serif" transform="rotate(-90 '+blX.toFixed(1)+' '+blY.toFixed(1)+')">'+binLetter+'</text>');
+  var blX = blockLabelPos.x - 4, blY = blockLabelPos.y - 4;
+  var isoAngle = -Math.atan2(P3D_TILE_H / 2, P3D_TILE_W / 2) * 180 / Math.PI;
+  svgParts.push('<text x="'+blX.toFixed(1)+'" y="'+blY.toFixed(1)+'" font-size="26" font-weight="900" fill="#111827" font-family="Georgia, serif" transform="rotate('+isoAngle.toFixed(2)+' '+blX.toFixed(1)+' '+blY.toFixed(1)+')">'+binLetter+'</text>');
 
   svgParts.push('</svg>');
 
