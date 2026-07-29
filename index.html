@@ -3480,12 +3480,12 @@ function petaRender3D(binLetter) {
       }
     }
   }
-  // Kubus (terisi/invisible) dikasih depth key SAMA seperti sebelumnya (x+y-z), tapi kotak
-  // terisi diberi sedikit prioritas (+0.4) supaya menang dibanding rangka tepat di posisinya
-  // sendiri, sementara rangka di posisi TETANGGA (x beda) tetap urut alami sesuai jaraknya.
+  // Kubus terisi diberi prioritas +0.9 (bukan 0.4) — supaya menang dibanding rangka di
+  // KEDUA batas kolomnya sendiri (kiri DAN kanan), tidak cuma salah satu sisi. Sebelumnya
+  // +0.4 cuma cukup menang di batas kanan, batas kiri masih kalah dan zigzag nembus kotak.
   renderList.forEach(function(item) {
     if (item.frameType) return; // sudah ada depth
-    item.depth = (item.x + item.y - item.z) + (item.invisible ? 0 : 0.4);
+    item.depth = (item.x + item.y - item.z) + (item.invisible ? 0 : 0.9);
   });
   renderList.sort(function(a, b) { return a.depth - b.depth; });
 
