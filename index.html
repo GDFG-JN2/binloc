@@ -3090,6 +3090,26 @@ function p3dShadeColor(hex, percent) {
   return '#' + ((1<<24) + (r<<16) + (g<<8) + b).toString(16).slice(1);
 }
 
+var P3D_EKSPOR_COLOR = '#ddb96e';
+var P3D_MONTH_COLOR = {
+  'jan': '#ff0000', 'feb': '#ff0000',
+  'mar': '#f7ff00', 'apr': '#f7ff00',
+  'may': '#19e619', 'jun': '#19e619',
+  'jul': '#0000ff', 'aug': '#0000ff',
+  'sep': '#f97316', 'oct': '#f97316',
+  'nov': '#efefef', 'dec': '#efefef'
+};
+
+// Warna kubus per-ITEM (bukan per-posisi lagi) — EKSPOR warna tetap, LOKAL ikut bulan prodate.
+function p3dColorForItem(item) {
+  var tipe = String(item.tipe || 'LOKAL').toUpperCase();
+  if (tipe === 'EKSPOR') return P3D_EKSPOR_COLOR;
+  var prodate = String(item.prodate || '').trim();
+  var m = prodate.match(/[A-Za-z]{3}/); // ambil 3 huruf bulan dari format "DD-Mon-YYYY"
+  var key = m ? m[0].toLowerCase() : '';
+  return P3D_MONTH_COLOR[key] || '#f97316'; // fallback oranye kalau prodate tidak kebaca
+}
+
 function p3dColorInfo(hexOrEmpty) {
   var navy = '#1e293b';
   if (!hexOrEmpty) {
@@ -3330,9 +3350,10 @@ function petaRender3D(binLetter) {
     binMap[r.binLoc].items.push(r);
   });
 
-  // Hitung filled-set per posisi: level PALING ATAS duluan, lalu depth PALING BELAKANG duluan
-  var filledSet = {}; // key 'x_y_z' -> true
-  var colorMap  = {}; // key 'x' -> warna (LOKAL/EKSPOR)
+  // Hitung filled-set per posisi: level PALING ATAS duluan, lalu depth PALING BELAKANG duluan.
+  // Warna sekarang per-SLOT (bukan per-posisi) — tiap item beda warna sesuai tipe/prodate-nya.
+  var filledSet  = {}; // key 'x_y_z' -> true
+  var slotColor  = {}; // key 'x_y_z' -> warna hex khusus slot itu
   _peta3DHoverInfo = {};
   for (var xi = 0; xi < nx; xi++) {
     var rowNum   = rowNumFor(xi);
@@ -3341,14 +3362,6 @@ function petaRender3D(binLetter) {
     var info = binMap[binCode];
     var capacity = ny_local * nz_local;
     var used = info ? info.used : 0;
-    var fillCount = Math.min(Math.round(used), capacity);
-
-    var color = '#f97316'; // default LOKAL
-    if (info) {
-      var isEkspor = (info.tipeCounts['EKSPOR'] || 0) > (info.tipeCounts['LOKAL'] || 0);
-      color = isEkspor ? '#3b82f6' : '#f97316';
-    }
-    colorMap[xi] = color;
 
     _peta3DHoverInfo[xi] = { binCode: binCode, rowNum: rowNum, used: used, capacity: capacity, items: info ? info.items : [] };
 
@@ -3358,8 +3371,21 @@ function petaRender3D(binLetter) {
         order.push([y, z]);
       }
     }
-    for (var i = 0; i < fillCount && i < order.length; i++) {
-      filledSet[xi + '_' + order[i][0] + '_' + order[i][1]] = true;
+
+    // Isi slot berurutan per ITEM — tiap item "mengklaim" beberapa slot berturut-turut
+    // sesuai jumlah plt efektifnya, dengan warna item itu sendiri.
+    var slotPtr = 0;
+    if (info && info.items && info.items.length) {
+      info.items.forEach(function(item) {
+        var pecList = (item.pecahan_list && item.pecahan_list.length > 0) ? item.pecahan_list : ((item.pecahan||0) > 0 ? [item.pecahan] : []);
+        var unitsForItem = (item.pallet || 0) + pecList.length;
+        var itemColor = p3dColorForItem(item);
+        for (var u = 0; u < unitsForItem && slotPtr < order.length; u++, slotPtr++) {
+          var yz = order[slotPtr][0] + '_' + order[slotPtr][1];
+          filledSet[xi + '_' + yz] = true;
+          slotColor[xi + '_' + yz] = itemColor;
+        }
+      });
     }
   }
 
@@ -3391,7 +3417,7 @@ function petaRender3D(binLetter) {
         var drawTop   = !isFilledAt(x2, y2, z2+1);
         var drawFaceX = true;
         var drawFaceY = true;
-        var cInfo = p3dColorInfo(colorMap[x2]);
+        var cInfo = p3dColorInfo(slotColor[x2+'_'+y2+'_'+z2]);
         // Kalau ada posisi yang dipilih, redupkan semua posisi LAIN
         if (_peta3DSelectedPosIdx !== null && x2 !== _peta3DSelectedPosIdx) {
           cInfo = { color: cInfo.color, opacity: cInfo.opacity * 0.16, strokeColor: cInfo.strokeColor, strokeOp: cInfo.strokeOp * 0.35 };
@@ -3494,14 +3520,21 @@ function petaRender3D(binLetter) {
 
   svgParts.push('</svg>');
 
-  var infoBar = '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px 10px;font-size:10px;color:var(--muted);flex-wrap:wrap;gap:6px;">'
-    + '<span>Rak <b style="color:var(--text)">' + binLetter + '</b> · '
-    + nx + ' posisi · ' + nz + ' level × ' + ny + ' depth</span>'
-    + '<span style="display:flex;gap:10px;">'
-      + '<span><span style="display:inline-block;width:9px;height:9px;background:#f97316;border-radius:2px;margin-right:3px;"></span>Lokal</span>'
-      + '<span><span style="display:inline-block;width:9px;height:9px;background:#3b82f6;border-radius:2px;margin-right:3px;"></span>Ekspor</span>'
-      + '<span><span style="display:inline-block;width:9px;height:9px;background:#bfe3f0;border:1px solid #64748b;border-radius:2px;margin-right:3px;"></span>Kosong</span>'
-    + '</span>'
+  var infoBar = '<div style="padding:6px 4px 10px;font-size:10px;color:var(--muted);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px;">'
+      + '<span>Rak <b style="color:var(--text)">' + binLetter + '</b> · '
+      + nx + ' posisi · ' + nz + ' level × ' + ny + ' depth</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;background:'+P3D_EKSPOR_COLOR+';border-radius:2px;margin-right:3px;"></span>Ekspor</span>'
+    + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
+      + '<span style="font-weight:700;">Lokal (prodate):</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;background:#ff0000;border-radius:2px;margin-right:3px;"></span>Jan-Feb</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;background:#f7ff00;border:1px solid #d4d400;border-radius:2px;margin-right:3px;"></span>Mar-Apr</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;background:#19e619;border-radius:2px;margin-right:3px;"></span>Mei-Jun</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;background:#0000ff;border-radius:2px;margin-right:3px;"></span>Jul-Agu</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;background:#f97316;border-radius:2px;margin-right:3px;"></span>Sep-Okt</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;background:#efefef;border:1px solid #9ca3af;border-radius:2px;margin-right:3px;"></span>Nov-Des</span>'
+    + '</div>'
   + '</div>';
 
   wrap.innerHTML = infoBar
