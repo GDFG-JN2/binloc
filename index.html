@@ -3091,34 +3091,67 @@ function p3dShadeColor(hex, percent) {
 }
 
 function p3dColorInfo(hexOrEmpty) {
-  var navy = '#1e293b'; // biru dongker tebal — garis pemisah antar kubus, konsisten kaya di demo
+  var navy = '#1e293b';
   if (!hexOrEmpty) {
     return { color: '#bfe3f0', opacity: 0.14, strokeColor: navy, strokeOp: 0.9 };
   }
   return { color: hexOrEmpty, opacity: 1, strokeColor: navy, strokeOp: 1 };
 }
 
+// Warna & ketebalan garis tegak rangka/kotak — navy konsisten, TIDAK ada gradasi/variasi per level
+// (sesuai keputusan final: semua level harus sama persis, warna maupun tebal).
+var P3D_RACK_COLOR = '#1e3a8a';
+var P3D_RACK_WIDTH  = 3;
+
 function p3dCubePolygons(x, y, z, colorInfo, drawFlags) {
+  var isFilled = colorInfo.opacity === 1;
+
+  // Kotak terisi = ukuran diperkecil (ada celah antar kotak, kayak produk beneran di rak).
+  // Kosong (aquarium) tetap ukuran penuh 1 sel, biar kotak kacanya jelas nempel rapat.
+  var s = isFilled ? 0.94 : 1;
+  var pad = (1 - s) / 2;
+  var x0 = x + pad, x1 = x + 1 - pad;
+  var y0 = y + pad, y1 = y + 1 - pad;
+  var z0 = z + pad * 0.6, z1 = z + 1 - pad * 0.6;
+
   var p = {};
-  p.top_fl = p3dIsoProject(x,   y,   z+1);
-  p.top_fr = p3dIsoProject(x+1, y,   z+1);
-  p.top_bl = p3dIsoProject(x,   y+1, z+1);
-  p.top_br = p3dIsoProject(x+1, y+1, z+1);
-  p.bot_fl = p3dIsoProject(x,   y,   z);
-  p.bot_fr = p3dIsoProject(x+1, y,   z);
-  p.bot_bl = p3dIsoProject(x,   y+1, z);
-  p.bot_br = p3dIsoProject(x+1, y+1, z);
+  p.top_fl = p3dIsoProject(x0, y0, z1);
+  p.top_fr = p3dIsoProject(x1, y0, z1);
+  p.top_bl = p3dIsoProject(x0, y1, z1);
+  p.top_br = p3dIsoProject(x1, y1, z1);
+  p.bot_fl = p3dIsoProject(x0, y0, z0);
+  p.bot_fr = p3dIsoProject(x1, y0, z0);
+  p.bot_bl = p3dIsoProject(x0, y1, z0);
+  p.bot_br = p3dIsoProject(x1, y1, z0);
   function pts(arr) { return arr.map(function(pt){ return pt.x.toFixed(1)+','+pt.y.toFixed(1); }).join(' '); }
 
   var shadeTop = colorInfo.color;
   var shadeX   = p3dShadeColor(colorInfo.color, -40);
   var shadeY   = p3dShadeColor(colorInfo.color, -22);
 
+  // Kotak terisi: stroke HITAM TIPIS di badan kotak (pemisah antar kotak).
+  // Kosong (aquarium): tetap pakai garis navy biar kotak kacanya jelas per-slot.
+  var strokeColor = isFilled ? '#000' : colorInfo.strokeColor;
+  var strokeOp    = isFilled ? 1 : colorInfo.strokeOp;
+  var strokeW     = isFilled ? 0.5 : 2.3;
+
   var faces = [];
-  if (drawFlags.top)   faces.push({ pts: pts([p.top_fl,p.top_fr,p.top_br,p.top_bl]), fill: shadeTop, op: colorInfo.opacity, stroke: colorInfo.strokeColor, strokeOp: colorInfo.strokeOp });
-  if (drawFlags.faceX) faces.push({ pts: pts([p.top_fr,p.top_br,p.bot_br,p.bot_fr]), fill: shadeX,   op: colorInfo.opacity, stroke: colorInfo.strokeColor, strokeOp: colorInfo.strokeOp });
-  if (drawFlags.faceY) faces.push({ pts: pts([p.top_bl,p.top_br,p.bot_br,p.bot_bl]), fill: shadeY,   op: colorInfo.opacity, stroke: colorInfo.strokeColor, strokeOp: colorInfo.strokeOp });
-  return faces;
+  if (drawFlags.top)   faces.push({ pts: pts([p.top_fl,p.top_fr,p.top_br,p.top_bl]), fill: shadeTop, op: colorInfo.opacity, stroke: strokeColor, strokeOp: strokeOp, strokeW: strokeW });
+  if (drawFlags.faceX) faces.push({ pts: pts([p.top_fr,p.top_br,p.bot_br,p.bot_fr]), fill: shadeX,   op: colorInfo.opacity, stroke: strokeColor, strokeOp: strokeOp, strokeW: strokeW });
+  if (drawFlags.faceY) faces.push({ pts: pts([p.top_bl,p.top_br,p.bot_br,p.bot_bl]), fill: shadeY,   op: colorInfo.opacity, stroke: strokeColor, strokeOp: strokeOp, strokeW: strokeW });
+
+  // Garis tegak (cuma sisi TINGGI kotak, warna navy sama kayak rangka) — HANYA untuk kotak terisi.
+  // Digambar terpisah, setelah face, supaya "menang" menutupi stroke hitam tipis di posisi tegak.
+  var edges = [];
+  if (isFilled) {
+    edges = [
+      { p1: p.bot_bl, p2: p.top_bl }, // kiri
+      { p1: p.bot_br, p2: p.top_br }, // tengah-depan
+      { p1: p.bot_fr, p2: p.top_fr }  // kanan
+    ];
+  }
+
+  return { faces: faces, edges: edges };
 }
 
 function petaToggle3D() {
@@ -3338,9 +3371,12 @@ function petaRender3D(binLetter) {
       for (var x2 = 0; x2 < nx; x2++) {
         if (!existsAt(x2, y2, z2)) continue; // di luar depth/level posisi ini — tidak ada kubus di sana sama sekali
         var selfFilled = isFilledAt(x2, y2, z2);
+        // Kotak terisi = ada celah antar kotak (gaya "produk terpisah"), jadi sisi kanan/depan
+        // SELALU digambar (tidak pernah ketutup tetangga). Cuma sisi ATAS yang dicek —
+        // kalau ada kubus terisi tepat di atasnya, atasnya tidak usah digambar (tersembunyi).
         var drawTop   = !(selfFilled && isFilledAt(x2, y2, z2+1));
-        var drawFaceX = !(selfFilled && isFilledAt(x2+1, y2, z2));
-        var drawFaceY = !(selfFilled && isFilledAt(x2, y2+1, z2));
+        var drawFaceX = true;
+        var drawFaceY = true;
         if (!drawTop && !drawFaceX && !drawFaceY) continue;
         var color = selfFilled ? colorMap[x2] : null;
         var cInfo = p3dColorInfo(color);
@@ -3383,13 +3419,48 @@ function petaRender3D(binLetter) {
   var shadowW = (maxX - minX) * 0.92;
   svgParts.push('<ellipse cx="'+shadowCenterX.toFixed(1)+'" cy="'+shadowY.toFixed(1)+'" rx="'+(shadowW/2).toFixed(1)+'" ry="'+(P3D_TILE_H*0.55).toFixed(1)+'" fill="#000" opacity="0.10"/>');
 
+  // ── Rangka rak — tiang PER-LEVEL + zigzag per level, digambar DI BELAKANG (duluan),
+  // sebelum kotak — jadi slot terisi otomatis nutupin rangka di baliknya, slot kosong
+  // menampakkan rangka aslinya. Tiap batas-X ambil depth/level MAKSIMUM dari 2 kolom
+  // tetangganya (biar tetap menaungi kedua sisi walau depth beda).
+  function depthAtBoundary(bx) {
+    var a = bx > 0 ? (nyByX[bx-1] || 0) : 0;
+    var b = bx < nx ? (nyByX[bx] || 0) : 0;
+    return Math.max(a, b);
+  }
+  function levelAtBoundary(bx) {
+    var a = bx > 0 ? (nzByX[bx-1] || 0) : 0;
+    var b = bx < nx ? (nzByX[bx] || 0) : 0;
+    return Math.max(a, b);
+  }
+  for (var fx = 0; fx <= nx; fx++) {
+    var fDepth = depthAtBoundary(fx), fLevel = levelAtBoundary(fx);
+    for (var fy = 0; fy <= fDepth; fy++) {
+      for (var fzL = 0; fzL < fLevel; fzL++) {
+        var fpBot = p3dIsoProject(fx, fy, fzL), fpTop = p3dIsoProject(fx, fy, fzL+1);
+        svgParts.push('<line x1="'+fpBot.x.toFixed(1)+'" y1="'+fpBot.y.toFixed(1)+'" x2="'+fpTop.x.toFixed(1)+'" y2="'+fpTop.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+P3D_RACK_WIDTH+'"/>');
+      }
+    }
+    for (var fy2 = 0; fy2 < fDepth; fy2++) {
+      for (var fzz = 0; fzz < fLevel; fzz++) {
+        var fflip = fzz % 2 === 0;
+        var ffrom = fflip ? p3dIsoProject(fx, fy2, fzz)   : p3dIsoProject(fx, fy2, fzz+1);
+        var fto   = fflip ? p3dIsoProject(fx, fy2+1, fzz+1) : p3dIsoProject(fx, fy2+1, fzz);
+        svgParts.push('<line x1="'+ffrom.x.toFixed(1)+'" y1="'+ffrom.y.toFixed(1)+'" x2="'+fto.x.toFixed(1)+'" y2="'+fto.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+P3D_RACK_WIDTH+'"/>');
+      }
+    }
+  }
+
   cubes.forEach(function(c) {
-    var faces = p3dCubePolygons(c.x, c.y, c.z, c.colorInfo, { top:c.drawTop, faceX:c.drawFaceX, faceY:c.drawFaceY });
-    faces.forEach(function(f) {
-      svgParts.push('<polygon points="'+f.pts+'" fill="'+f.fill+'" fill-opacity="'+f.op+'" stroke="'+f.stroke+'" stroke-opacity="'+f.strokeOp+'" stroke-width="2.3" style="cursor:pointer;" '
+    var result = p3dCubePolygons(c.x, c.y, c.z, c.colorInfo, { top:c.drawTop, faceX:c.drawFaceX, faceY:c.drawFaceY });
+    result.faces.forEach(function(f) {
+      svgParts.push('<polygon points="'+f.pts+'" fill="'+f.fill+'" fill-opacity="'+f.op+'" stroke="'+f.stroke+'" stroke-opacity="'+f.strokeOp+'" stroke-width="'+f.strokeW+'" style="cursor:pointer;" '
         + 'onclick="petaTap3DPos('+c.binIdx+')" '
         + 'onmouseenter="petaHover3D(event,'+c.binIdx+')" onmouseleave="petaHoverOut3D()"'
       + '/>');
+    });
+    result.edges.forEach(function(e) {
+      svgParts.push('<line x1="'+e.p1.x.toFixed(1)+'" y1="'+e.p1.y.toFixed(1)+'" x2="'+e.p2.x.toFixed(1)+'" y2="'+e.p2.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+P3D_RACK_WIDTH+'" style="pointer-events:none;"/>');
     });
   });
 
