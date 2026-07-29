@@ -3371,15 +3371,14 @@ function petaRender3D(binLetter) {
       for (var x2 = 0; x2 < nx; x2++) {
         if (!existsAt(x2, y2, z2)) continue; // di luar depth/level posisi ini — tidak ada kubus di sana sama sekali
         var selfFilled = isFilledAt(x2, y2, z2);
+        if (!selfFilled) continue; // kosong = tidak digambar sama sekali, cuma rangka yang kelihatan
         // Kotak terisi = ada celah antar kotak (gaya "produk terpisah"), jadi sisi kanan/depan
         // SELALU digambar (tidak pernah ketutup tetangga). Cuma sisi ATAS yang dicek —
         // kalau ada kubus terisi tepat di atasnya, atasnya tidak usah digambar (tersembunyi).
-        var drawTop   = !(selfFilled && isFilledAt(x2, y2, z2+1));
+        var drawTop   = !isFilledAt(x2, y2, z2+1);
         var drawFaceX = true;
         var drawFaceY = true;
-        if (!drawTop && !drawFaceX && !drawFaceY) continue;
-        var color = selfFilled ? colorMap[x2] : null;
-        var cInfo = p3dColorInfo(color);
+        var cInfo = p3dColorInfo(colorMap[x2]);
         // Kalau ada posisi yang dipilih, redupkan semua posisi LAIN
         if (_peta3DSelectedPosIdx !== null && x2 !== _peta3DSelectedPosIdx) {
           cInfo = { color: cInfo.color, opacity: cInfo.opacity * 0.16, strokeColor: cInfo.strokeColor, strokeOp: cInfo.strokeOp * 0.35 };
@@ -3463,6 +3462,25 @@ function petaRender3D(binLetter) {
       svgParts.push('<line x1="'+e.p1.x.toFixed(1)+'" y1="'+e.p1.y.toFixed(1)+'" x2="'+e.p2.x.toFixed(1)+'" y2="'+e.p2.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+P3D_RACK_WIDTH+'" style="pointer-events:none;"/>');
     });
   });
+
+  // ── Area klik transparan untuk posisi yang 100% kosong (tidak ada kubus buat di-tap) ──
+  var filledBinIdx = {};
+  cubes.forEach(function(c) { filledBinIdx[c.binIdx] = true; });
+  for (var ei = 0; ei < nx; ei++) {
+    if (filledBinIdx[ei]) continue; // ada isinya, sudah bisa di-tap lewat kubus
+    var eNy = nyByX[ei], eNz = nzByX[ei];
+    if (!eNy || !eNz) continue; // posisi tidak eksis (di luar segmen), skip
+    var eMinX=1e9,eMinY=1e9,eMaxX=-1e9,eMaxY=-1e9;
+    for (var edx=0; edx<=1; edx++) for (var edy=0; edy<=eNy; edy+=eNy) for (var edz=0; edz<=eNz; edz+=eNz) {
+      var ep = p3dIsoProject(ei+edx, edy, edz);
+      if (ep.x<eMinX) eMinX=ep.x; if (ep.x>eMaxX) eMaxX=ep.x;
+      if (ep.y<eMinY) eMinY=ep.y; if (ep.y>eMaxY) eMaxY=ep.y;
+    }
+    svgParts.push('<rect x="'+eMinX.toFixed(1)+'" y="'+eMinY.toFixed(1)+'" width="'+(eMaxX-eMinX).toFixed(1)+'" height="'+(eMaxY-eMinY).toFixed(1)+'" fill="transparent" style="cursor:pointer;" '
+      + 'onclick="petaTap3DPos('+ei+')" '
+      + 'onmouseenter="petaHover3D(event,'+ei+')" onmouseleave="petaHoverOut3D()"'
+    + '/>');
+  }
 
   // ── Nomor posisi — di garis depan-bawah tiap kolom, biar kelihatan row berapa ──
   for (var lx = 0; lx < nx; lx++) {
