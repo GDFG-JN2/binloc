@@ -3174,7 +3174,7 @@ function p3dCubePolygons(x, y, z, colorInfo, drawFlags) {
     // Level ganjil & depth ganjil → miring kiri ("/"), selain itu → miring kanan ("\").
     var levelGanjil = (z % 2) === 1;
     var depthGanjil = (y % 2) === 1;
-    var miringKiri = levelGanjil && depthGanjil;
+    var miringKiri = levelGanjil !== depthGanjil; // XOR — beda paritas baru ganti arah
     var decorP1 = miringKiri ? p.top_fr : p.top_br;
     var decorP2 = miringKiri ? p.bot_br : p.bot_fr;
     edges.push({ p1: decorP1, p2: decorP2, w: 1.4 });
