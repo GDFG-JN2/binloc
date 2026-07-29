@@ -3132,7 +3132,7 @@ function p3dCubePolygons(x, y, z, colorInfo, drawFlags) {
   var pad = (1 - s) / 2;
   var x0 = x + pad, x1 = x + 1 - pad;
   var y0 = y + pad, y1 = y + 1 - pad;
-  var z0 = z + pad * 0.6, z1 = z + 1 - pad * 0.6;
+  var z0 = z + 0.06, z1 = z + 1; // atas pas rata batas rangka (tidak nongol lagi), celah cuma di bawah
 
   var p = {};
   p.top_fl = p3dIsoProject(x0, y0, z1);
