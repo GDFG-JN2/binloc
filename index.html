@@ -3160,6 +3160,57 @@ function p3dCubePolygons(x, y, z, colorInfo, drawFlags) {
   if (drawFlags.faceX) faces.push({ pts: pts([p.top_fr,p.top_br,p.bot_br,p.bot_fr]), fill: shadeX,   op: colorInfo.opacity, stroke: strokeColor, strokeOp: strokeOp, strokeW: strokeW });
   if (drawFlags.faceY) faces.push({ pts: pts([p.top_bl,p.top_br,p.bot_br,p.bot_bl]), fill: shadeY,   op: colorInfo.opacity, stroke: strokeColor, strokeOp: strokeOp, strokeW: strokeW });
 
+  // ── Dekorasi "tumpukan dus" — strip pallet coklat kayu di dasar + garis kotak-kotak
+  // di sisi samping/depan + grid diamond di atas. Digambar SETELAH face (di atas warna
+  // dasar) tapi SEBELUM garis navy (edges) — jadi navy tetap menang menutupi ini kalau tumpang tindih.
+  var cartonPolys = [];
+  var cartonLines = [];
+  var PALLET_COLOR = '#946d1c';
+  var palletT = 0.12; // tinggi strip pallet (proporsi dari tinggi kotak)
+  function lerpZ(zt) { return z0 + (z1 - z0) * zt; }
+
+  if (isFilled && drawFlags.faceX) {
+    var fxTL = p3dIsoProject(x1, y0, lerpZ(1)), fxTR = p3dIsoProject(x1, y1, lerpZ(1));
+    var fxBL = p3dIsoProject(x1, y0, lerpZ(0)), fxBR = p3dIsoProject(x1, y1, lerpZ(0));
+    var fxPalletTop1 = p3dIsoProject(x1, y0, lerpZ(palletT)), fxPalletTop2 = p3dIsoProject(x1, y1, lerpZ(palletT));
+    cartonPolys.push({ pts: pts([fxBL, fxBR, fxPalletTop2, fxPalletTop1]), fill: PALLET_COLOR });
+    // Garis horizontal (3 baris dus di atas pallet)
+    [0.12, 0.4, 0.68].forEach(function(t) {
+      var l1 = p3dIsoProject(x1, y0, lerpZ(t)), l2 = p3dIsoProject(x1, y1, lerpZ(t));
+      cartonLines.push({ p1: l1, p2: l2 });
+    });
+    // Garis vertikal (pemisah dus tengah tiap baris)
+    [0.26, 0.54, 0.84].forEach(function(tBot, i) {
+      var tTop = [0.4, 0.68, 1][i];
+      var v1 = p3dIsoProject(x1, (y0+y1)/2, lerpZ(tBot)), v2 = p3dIsoProject(x1, (y0+y1)/2, lerpZ(tTop));
+      cartonLines.push({ p1: v1, p2: v2 });
+    });
+  }
+  if (isFilled && drawFlags.faceY) {
+    var fyTL = p3dIsoProject(x0, y1, lerpZ(1)), fyTR = p3dIsoProject(x1, y1, lerpZ(1));
+    var fyBL = p3dIsoProject(x0, y1, lerpZ(0)), fyBR = p3dIsoProject(x1, y1, lerpZ(0));
+    var fyPalletTop1 = p3dIsoProject(x0, y1, lerpZ(palletT)), fyPalletTop2 = p3dIsoProject(x1, y1, lerpZ(palletT));
+    cartonPolys.push({ pts: pts([fyBL, fyBR, fyPalletTop2, fyPalletTop1]), fill: PALLET_COLOR });
+    [0.12, 0.4, 0.68].forEach(function(t) {
+      var l1 = p3dIsoProject(x0, y1, lerpZ(t)), l2 = p3dIsoProject(x1, y1, lerpZ(t));
+      cartonLines.push({ p1: l1, p2: l2 });
+    });
+    [0.26, 0.54, 0.84].forEach(function(tBot, i) {
+      var tTop = [0.4, 0.68, 1][i];
+      var v1 = p3dIsoProject((x0+x1)/2, y1, lerpZ(tBot)), v2 = p3dIsoProject((x0+x1)/2, y1, lerpZ(tTop));
+      cartonLines.push({ p1: v1, p2: v2 });
+    });
+  }
+  if (isFilled && drawFlags.top) {
+    // Grid diamond 3x3 di permukaan atas
+    [1/3, 2/3].forEach(function(t) {
+      var yA = y0 + (y1-y0)*t;
+      cartonLines.push({ p1: p3dIsoProject(x0, yA, z1), p2: p3dIsoProject(x1, yA, z1) });
+      var xA = x0 + (x1-x0)*t;
+      cartonLines.push({ p1: p3dIsoProject(xA, y0, z1), p2: p3dIsoProject(xA, y1, z1) });
+    });
+  }
+
   // Garis tegak (cuma sisi TINGGI kotak, warna navy sama kayak rangka) — HANYA untuk kotak terisi.
   // Digambar terpisah, setelah face, supaya "menang" menutupi stroke hitam tipis di posisi tegak.
   var edges = [];
@@ -3180,7 +3231,7 @@ function p3dCubePolygons(x, y, z, colorInfo, drawFlags) {
     edges.push({ p1: decorP1, p2: decorP2, w: 1.4 });
   }
 
-  return { faces: faces, edges: edges };
+  return { faces: faces, edges: edges, cartonPolys: cartonPolys, cartonLines: cartonLines };
 }
 
 function petaToggle3D() {
@@ -3533,6 +3584,13 @@ function petaRender3D(binLetter) {
         + 'onclick="petaTap3DPos('+c.binIdx+')" '
         + 'onmouseenter="petaHover3D(event,'+c.binIdx+')" onmouseleave="petaHoverOut3D()"'
       + '/>');
+    });
+    // Dekorasi "tumpukan dus" (strip pallet coklat + garis kotak-kotak) — di antara face dan navy edges
+    result.cartonPolys.forEach(function(cp) {
+      svgParts.push('<polygon points="'+cp.pts+'" fill="'+cp.fill+'" style="pointer-events:none;"/>');
+    });
+    result.cartonLines.forEach(function(cl) {
+      svgParts.push('<line x1="'+cl.p1.x.toFixed(1)+'" y1="'+cl.p1.y.toFixed(1)+'" x2="'+cl.p2.x.toFixed(1)+'" y2="'+cl.p2.y.toFixed(1)+'" stroke="#000" stroke-width="0.5" style="pointer-events:none;"/>');
     });
     result.edges.forEach(function(e) {
       svgParts.push('<line x1="'+e.p1.x.toFixed(1)+'" y1="'+e.p1.y.toFixed(1)+'" x2="'+e.p2.x.toFixed(1)+'" y2="'+e.p2.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+e.w+'" style="pointer-events:none;"/>');
