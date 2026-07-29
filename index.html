@@ -3169,14 +3169,14 @@ function p3dCubePolygons(x, y, z, colorInfo, drawFlags) {
       { p1: p.bot_br, p2: p.top_br, w: P3D_RACK_WIDTH }, // tengah-depan
       { p1: p.bot_fr, p2: p.top_fr, w: P3D_RACK_WIDTH }  // kanan
     ];
-    // Garis diagonal dekorasi di sisi depan (faceY) — warna sama rangka, lebih tipis dari
-    // tiang (P3D_RACK_WIDTH) tapi lebih tebal dari stroke hitam pemisah kotak (0.5).
+    // Garis diagonal dekorasi di sisi SAMPING (faceX, sumbu X) — warna sama rangka, lebih
+    // tipis dari tiang (P3D_RACK_WIDTH) tapi lebih tebal dari stroke hitam pemisah kotak (0.5).
     // Level ganjil & depth ganjil → miring kiri ("/"), selain itu → miring kanan ("\").
     var levelGanjil = (z % 2) === 1;
     var depthGanjil = (y % 2) === 1;
     var miringKiri = levelGanjil && depthGanjil;
-    var decorP1 = miringKiri ? p.top_br : p.top_bl;
-    var decorP2 = miringKiri ? p.bot_bl : p.bot_br;
+    var decorP1 = miringKiri ? p.top_fr : p.top_br;
+    var decorP2 = miringKiri ? p.bot_br : p.bot_fr;
     edges.push({ p1: decorP1, p2: decorP2, w: 1.4 });
   }
 
