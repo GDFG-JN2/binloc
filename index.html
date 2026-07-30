@@ -3065,7 +3065,7 @@ function petaRenderMap(rawData) {
 
 // ═══════════════════════════════════════
 // PETA 3D — isometric per-rak, kapasitas dari BIN_CAP kolom I-L (BIN/ROW/LEVEL/DEPTH)
-// Urutan isi: level PALING ATAS duluan, dalam 1 level posisi PALING BELAKANG duluan.
+// Urutan isi: level PALING ATAS duluan, dalam 1 level posisi PALING DEPAN duluan.
 // ═══════════════════════════════════════
 var _peta3DMode      = false;
 var _peta3DGroups    = null; // cache dari getBinCap3D
@@ -3314,14 +3314,16 @@ function _peta3DAfterGroupsLoaded() {
   var uniqueLetters = [];
   _peta3DGroups.forEach(function(g) { if (uniqueLetters.indexOf(g.bin) === -1) uniqueLetters.push(g.bin); });
 
-  if (!_peta3DSelected) _peta3DSelected = uniqueLetters[0];
-  chipsEl.innerHTML = uniqueLetters.map(function(letter) {
+  if (!_peta3DSelected) _peta3DSelected = 'ALL';
+  var allChips = ['ALL'].concat(uniqueLetters);
+  chipsEl.innerHTML = allChips.map(function(letter) {
     var sel = letter === _peta3DSelected;
     return '<div onclick="petaSelect3DRack(\'' + letter + '\')" style="padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800;'
       + (sel ? 'background:#9333ea;color:#fff;' : 'background:var(--surface2);color:var(--muted);border:1px solid var(--border);')
       + '">' + letter + '</div>';
   }).join('');
-  petaRender3D(_peta3DSelected);
+  if (_peta3DSelected === 'ALL') petaRender3DAll(uniqueLetters);
+  else petaRender3D(_peta3DSelected);
 }
 
 function petaSelect3DRack(bin) {
@@ -3349,6 +3351,257 @@ function petaTap3DPos(posIdx) {
 }
 
 var _peta3DHoverInfo = {}; // key posIdx -> { binCode, used, capacity, items }
+
+// ── Render SEMUA rak sekaligus, tata letak fisik presisi ──
+// A-B berhadapan(jalan), B-C punggungan, C-D berhadapan(jalan), D-E punggungan,
+// E-F berhadapan(jalan), F-G punggungan, G-H berhadapan(jalan), H-I berhadapan(jalan).
+// Rak yang perlu "dicerminkan" (depannya menghadap balik) SAMA persis dengan set yang row
+// numberingnya sudah dibalik sebelumnya: B, D, F, H, I.
+function petaRender3DAll(allLetters) {
+  var LAYOUT_ORDER = ['A','B','C','D','E','F','G','H','I'].filter(function(l){ return allLetters.indexOf(l) !== -1; });
+  var MIRRORED = ['B','D','F','H','I'];
+  var AISLE_GAP = 4, BACK_GAP = 1.2;
+  var GAP_AFTER = { 'A':'aisle', 'B':'back', 'C':'aisle', 'D':'back', 'E':'aisle', 'F':'back', 'G':'aisle', 'H':'aisle' };
+
+  var wrap = document.getElementById('peta-map-wrap');
+  wrap.style.width = '100%'; wrap.style.minWidth = '0'; wrap.style.maxWidth = '100%'; wrap.style.margin = '0 auto';
+
+  function maxDepthOfRack(letter) {
+    var segs = _peta3DGroups.filter(function(g){ return g.bin === letter; });
+    return Math.max.apply(null, segs.map(function(s){ return s.depth; }));
+  }
+  function maxLevelOfRack(letter) {
+    var segs = _peta3DGroups.filter(function(g){ return g.bin === letter; });
+    return Math.max.apply(null, segs.map(function(s){ return s.level; }));
+  }
+
+  var rackMeta = {};
+  var cursor = 0;
+  LAYOUT_ORDER.forEach(function(letter, idx) {
+    var depth = maxDepthOfRack(letter);
+    if (idx > 0) {
+      var gapType = GAP_AFTER[LAYOUT_ORDER[idx-1]] || 'aisle';
+      cursor += (gapType === 'aisle') ? AISLE_GAP : BACK_GAP;
+    }
+    var yStart = cursor, yEnd = cursor + depth;
+    rackMeta[letter] = { yStart: yStart, yEnd: yEnd, depth: depth, mirrored: MIRRORED.indexOf(letter) !== -1 };
+    cursor = yEnd;
+  });
+  var globalMaxY = cursor;
+  var globalMaxX = Math.max.apply(null, LAYOUT_ORDER.map(function(l){
+    var segs = _peta3DGroups.filter(function(g){ return g.bin === l; });
+    var o = Math.min.apply(null, segs.map(function(s){return s.rowFrom;}));
+    return Math.max.apply(null, segs.map(function(s){ return s.rowTo - o + 1; }));
+  }));
+  var globalMaxZ = Math.max.apply(null, LAYOUT_ORDER.map(maxLevelOfRack));
+
+  function localToGlobalY(letter, localY) {
+    var m = rackMeta[letter];
+    return m.mirrored ? (m.yEnd - localY) : (m.yStart + localY);
+  }
+
+  // Helper mandiri — hitung screenX suatu ROW NUMBER di rak manapun (dipakai buat sejajarkan G26-32 dgn H29)
+  function computeScreenXForRow(letter, rowNum) {
+    var s = _peta3DGroups.filter(function(g){ return g.bin === letter; });
+    var o = Math.min.apply(null, s.map(function(x){return x.rowFrom;}));
+    var mR = Math.max.apply(null, s.map(function(x){return x.rowTo;}));
+    var nR = mR - o + 1;
+    var rev = MIRRORED.indexOf(letter) !== -1;
+    var xi = rev ? (mR - rowNum) : (rowNum - o);
+    return rev ? (nR - 1 - xi) : xi;
+  }
+  var gShiftOffset = 0;
+  if (allLetters.indexOf('G') !== -1 && allLetters.indexOf('H') !== -1) {
+    gShiftOffset = computeScreenXForRow('H', 29) - computeScreenXForRow('G', 26);
+  }
+
+  var binMap = {};
+  (_petaData || []).forEach(function(r) {
+    if (!binMap[r.binLoc]) binMap[r.binLoc] = { used: 0, items: [] };
+    var pecList = (r.pecahan_list && r.pecahan_list.length > 0) ? r.pecahan_list : ((r.pecahan||0) > 0 ? [r.pecahan] : []);
+    binMap[r.binLoc].used += (r.pallet || 0) + pecList.length;
+    binMap[r.binLoc].items.push(r);
+  });
+
+  var allCubes = [];
+  var allFrameLines = [];
+  var allLabels = [];
+
+  LAYOUT_ORDER.forEach(function(letter) {
+    var segs = _peta3DGroups.filter(function(g){ return g.bin === letter; }).sort(function(a,b){return a.rowFrom-b.rowFrom;});
+    var origin = Math.min.apply(null, segs.map(function(s){return s.rowFrom;}));
+    var maxRow = Math.max.apply(null, segs.map(function(s){return s.rowTo;}));
+    var nxR = maxRow - origin + 1;
+    var isRev = MIRRORED.indexOf(letter) !== -1;
+    function rowNumFor(xi) { return isRev ? (maxRow - xi) : (origin + xi); }
+    function screenX(xi) {
+      var base = isRev ? (nxR - 1 - xi) : xi;
+      if (letter === 'G' && rowNumFor(xi) >= 26) base += gShiftOffset;
+      return base;
+    }
+    function screenXBoundary(fx) {
+      var base = isRev ? (nxR - fx) : fx;
+      if (letter === 'G' && fx >= 25) base += gShiftOffset;
+      return base;
+    }
+    function segFor(rowNum) {
+      for (var i=0;i<segs.length;i++) if (rowNum>=segs[i].rowFrom && rowNum<=segs[i].rowTo) return segs[i];
+      return null;
+    }
+    var nyByXR = [], nzByXR = [];
+    for (var xi0=0; xi0<nxR; xi0++) {
+      var seg = segFor(rowNumFor(xi0));
+      nyByXR[xi0] = seg ? seg.depth : 0;
+      nzByXR[xi0] = seg ? seg.level : 0;
+    }
+
+    // yOffsetByX — D25 & G26-32 digeser maju biar bagian DEPAN sejajar segmen utama. I tidak diubah.
+    var yOffsetByX = [];
+    var mainSegDepth = segs.length ? segs[0].depth : 0;
+    for (var xiO=0; xiO<nxR; xiO++) {
+      var thisRow = rowNumFor(xiO);
+      var needsFrontAlign = (letter === 'D' && thisRow === 25) || (letter === 'G' && thisRow >= 26);
+      yOffsetByX[xiO] = needsFrontAlign ? Math.max(0, mainSegDepth - nyByXR[xiO]) : 0;
+    }
+
+    var filledSetR = {}, slotColorR = {};
+    for (var xi=0; xi<nxR; xi++) {
+      var rowNum = rowNumFor(xi);
+      var binCode = letter + rowNum;
+      var nyL = nyByXR[xi], nzL = nzByXR[xi];
+      var offY = yOffsetByX[xi] || 0;
+      var info = binMap[binCode];
+      var order = [];
+      for (var z=nzL-1; z>=0; z--) for (var y=nyL-1; y>=0; y--) order.push([offY+y,z]);
+      var slotPtr = 0;
+      if (info && info.items && info.items.length) {
+        info.items.forEach(function(item) {
+          var pecList = (item.pecahan_list && item.pecahan_list.length > 0) ? item.pecahan_list : ((item.pecahan||0) > 0 ? [item.pecahan] : []);
+          var units = (item.pallet || 0) + pecList.length;
+          var col = p3dColorForItem(item);
+          for (var u=0; u<units && slotPtr<order.length; u++, slotPtr++) {
+            var yz = order[slotPtr][0]+'_'+order[slotPtr][1];
+            filledSetR[xi+'_'+yz] = true;
+            slotColorR[xi+'_'+yz] = col;
+          }
+        });
+      }
+    }
+    function existsAtR(x,y,z){ if(x<0||x>=nxR) return false; var off=yOffsetByX[x]||0; return y>=off && y<off+nyByXR[x] && z>=0 && z<nzByXR[x]; }
+    function isFilledAtR(x,y,z){ if(!existsAtR(x,y,z)) return false; return !!filledSetR[x+'_'+y+'_'+z]; }
+
+    var maxNyR = 0;
+    for (var mi=0; mi<nyByXR.length; mi++) { var top = (yOffsetByX[mi]||0) + nyByXR[mi]; if (top > maxNyR) maxNyR = top; }
+    var maxNzR = nzByXR.length ? Math.max.apply(null, nzByXR) : 0;
+    for (var z2=0; z2<maxNzR; z2++) {
+      for (var y2=0; y2<maxNyR; y2++) {
+        for (var x2=0; x2<nxR; x2++) {
+          if (!existsAtR(x2,y2,z2)) continue;
+          if (!isFilledAtR(x2,y2,z2)) continue;
+          var gY = localToGlobalY(letter, y2);
+          var drawTop = !isFilledAtR(x2,y2,z2+1);
+          var cInfo = p3dColorInfo(slotColorR[x2+'_'+y2+'_'+z2]);
+          allCubes.push({ x:screenX(x2), y:gY, z:z2, colorInfo:cInfo, drawTop:drawTop });
+        }
+      }
+    }
+
+    function postSegObscured(fx, fy, fzL) {
+      var checks = [[fx-1,fy-1],[fx-1,fy],[fx,fy-1],[fx,fy]];
+      for (var ci=0; ci<checks.length; ci++) if (isFilledAtR(checks[ci][0], checks[ci][1], fzL)) return true;
+      return false;
+    }
+    for (var fx=0; fx<=nxR; fx++) {
+      var offL = fx>0 ? (yOffsetByX[fx-1]||0) : Infinity;
+      var offR = fx<nxR ? (yOffsetByX[fx]||0) : Infinity;
+      var topL = fx>0 ? (offL + (nyByXR[fx-1]||0)) : -Infinity;
+      var topR = fx<nxR ? (offR + (nyByXR[fx]||0)) : -Infinity;
+      var fyStart = Math.min(offL, offR);
+      var fyEnd   = Math.max(topL, topR);
+      var fLevel = Math.max(fx>0?nzByXR[fx-1]||0:0, fx<nxR?nzByXR[fx]||0:0);
+      var fxScreen = screenXBoundary(fx);
+      // Tiang polos per-level, occlusion-check langsung (zigzag SENGAJA tidak ditampilkan
+      // di mode ALL — masih ada bug di titik batas terluar; zigzag tetap normal di mode 1-rak).
+      for (var fy=fyStart; fy<=fyEnd; fy++) {
+        var gYp = localToGlobalY(letter, fy);
+        for (var fzL=0; fzL<fLevel; fzL++) {
+          if (postSegObscured(fx, fy, fzL)) continue;
+          allFrameLines.push({ x:fxScreen, y:gYp, z0:fzL, z1:fzL+1 });
+        }
+      }
+    }
+    for (var xi3=0; xi3<nxR; xi3++) {
+      var frontGY = localToGlobalY(letter, (yOffsetByX[xi3]||0) + (nyByXR[xi3] || 0));
+      var lp = p3dIsoProject(screenX(xi3) + 0.5, frontGY, 0);
+      allLabels.push({ x: lp.x, y: lp.y + 11, text: rowNumFor(xi3) });
+    }
+  });
+
+  // ── Render gabungan ──
+  var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  [0,globalMaxX].forEach(function(bx){ [0,globalMaxY].forEach(function(by){ [0,globalMaxZ].forEach(function(bz){
+    var p = p3dIsoProject(bx,by,bz);
+    if (p.x<minX) minX=p.x; if (p.x>maxX) maxX=p.x;
+    if (p.y<minY) minY=p.y; if (p.y>maxY) maxY=p.y;
+  }); }); });
+  var pad = 120;
+  var w = maxX-minX+pad*2, h = maxY-minY+pad*2;
+  var svgParts = [];
+  svgParts.push('<svg viewBox="'+(minX-pad)+' '+(minY-pad)+' '+w+' '+h+'" style="display:block;width:100%;height:auto;">');
+
+  var floorPts = [p3dIsoProject(0,0,0), p3dIsoProject(globalMaxX,0,0), p3dIsoProject(globalMaxX,globalMaxY,0), p3dIsoProject(0,globalMaxY,0)]
+    .map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
+  svgParts.push('<polygon points="'+floorPts+'" fill="#dde3ea" stroke="#94a3b8" stroke-width="1.5"/>');
+  // Strip abu tua HANYA di bawah footprint tiap rak (bukan area jalan/kosong)
+  LAYOUT_ORDER.forEach(function(letter) {
+    var m = rackMeta[letter];
+    var segsL = _peta3DGroups.filter(function(g){ return g.bin === letter; });
+    var originL = Math.min.apply(null, segsL.map(function(s){return s.rowFrom;}));
+    var maxRowL = Math.max.apply(null, segsL.map(function(s){return s.rowTo;}));
+    var nxL = maxRowL - originL + 1;
+    var xShiftMax = (letter === 'G') ? Math.abs(gShiftOffset) : 0;
+    var rackFloorPts = [
+      p3dIsoProject(0, m.yStart, 0), p3dIsoProject(nxL + xShiftMax, m.yStart, 0),
+      p3dIsoProject(nxL + xShiftMax, m.yEnd, 0), p3dIsoProject(0, m.yEnd, 0)
+    ].map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
+    svgParts.push('<polygon points="'+rackFloorPts+'" fill="#6b7280"/>');
+  });
+
+  var combined = allCubes.map(function(c){ return { rtype:'cube', x:c.x, y:c.y, z:c.z, colorInfo:c.colorInfo, drawTop:c.drawTop, depth: c.x+c.y-c.z+0.9 }; });
+  allFrameLines.forEach(function(fl) {
+    combined.push({ rtype:'post', x:fl.x, y:fl.y, z0:fl.z0, z1:fl.z1, depth: fl.x + fl.y - fl.z0 - 0.5 });
+  });
+  combined.sort(function(a,b){ return a.depth - b.depth; });
+
+  combined.forEach(function(item) {
+    if (item.rtype === 'post') {
+      var pb = p3dIsoProject(item.x, item.y, item.z0), pt2 = p3dIsoProject(item.x, item.y, item.z1);
+      svgParts.push('<line x1="'+pb.x.toFixed(1)+'" y1="'+pb.y.toFixed(1)+'" x2="'+pt2.x.toFixed(1)+'" y2="'+pt2.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+P3D_RACK_WIDTH+'"/>');
+      return;
+    }
+    var result = p3dCubePolygons(item.x, item.y, item.z, item.colorInfo, { top:item.drawTop, faceX:true, faceY:true });
+    result.faces.forEach(function(f) {
+      svgParts.push('<polygon points="'+f.pts+'" fill="'+f.fill+'" fill-opacity="'+f.op+'" stroke="'+f.stroke+'" stroke-opacity="'+f.strokeOp+'" stroke-width="'+f.strokeW+'"/>');
+    });
+    result.cartonPolys.forEach(function(cp){ svgParts.push('<polygon points="'+cp.pts+'" fill="'+cp.fill+'"/>'); });
+    result.cartonLines.forEach(function(cl){ svgParts.push('<line x1="'+cl.p1.x.toFixed(1)+'" y1="'+cl.p1.y.toFixed(1)+'" x2="'+cl.p2.x.toFixed(1)+'" y2="'+cl.p2.y.toFixed(1)+'" stroke="#000" stroke-width="0.5"/>'); });
+    result.edges.forEach(function(e){ svgParts.push('<line x1="'+e.p1.x.toFixed(1)+'" y1="'+e.p1.y.toFixed(1)+'" x2="'+e.p2.x.toFixed(1)+'" y2="'+e.p2.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+e.w+'"/>');});
+  });
+
+  LAYOUT_ORDER.forEach(function(letter) {
+    var m = rackMeta[letter];
+    var pos = p3dIsoProject(0, m.yStart, globalMaxZ);
+    svgParts.push('<text x="'+(pos.x-14).toFixed(1)+'" y="'+(pos.y-4).toFixed(1)+'" font-size="16" font-weight="900" fill="#111827" font-family="Georgia, serif">'+letter+'</text>');
+  });
+  allLabels.forEach(function(l) {
+    svgParts.push('<text x="'+l.x.toFixed(1)+'" y="'+l.y.toFixed(1)+'" font-size="7" font-weight="700" fill="#475569" text-anchor="middle" font-family="monospace">'+l.text+'</text>');
+  });
+
+  svgParts.push('</svg>');
+  wrap.innerHTML = '<div style="padding:6px 4px 10px;font-size:10px;color:var(--muted);">Semua rak — tampilan overview (tap/hover per-posisi nonaktif di mode ini, pilih 1 rak untuk detail)</div>'
+    + '<div style="background:#fff;border-radius:12px;padding:12px;width:100%;box-sizing:border-box;overflow-x:auto;">' + svgParts.join('') + '</div>';
+}
+
 
 function petaRender3D(binLetter) {
   var segments = (_peta3DGroups || []).filter(function(g) { return g.bin === binLetter; });
@@ -3410,7 +3663,7 @@ function petaRender3D(binLetter) {
     binMap[r.binLoc].items.push(r);
   });
 
-  // Hitung filled-set per posisi: level PALING ATAS duluan, lalu depth PALING BELAKANG duluan.
+  // Hitung filled-set per posisi: level PALING ATAS duluan, lalu depth PALING DEPAN duluan.
   // Warna sekarang per-SLOT (bukan per-posisi) — tiap item beda warna sesuai tipe/prodate-nya.
   var filledSet  = {}; // key 'x_y_z' -> true
   var slotColor  = {}; // key 'x_y_z' -> warna hex khusus slot itu
