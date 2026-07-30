@@ -3412,7 +3412,12 @@ function petaRender3DAll(allLetters) {
   }
   var gShiftOffset = 0;
   if (allLetters.indexOf('G') !== -1 && allLetters.indexOf('H') !== -1) {
-    gShiftOffset = computeScreenXForRow('H', 29) - computeScreenXForRow('G', 26);
+    var gShiftCandidate = computeScreenXForRow('H', 29) - computeScreenXForRow('G', 26);
+    // Pengaman — kalau hasil hitungnya NaN atau kelewat besar (data asli beda dari asumsi),
+    // batalkan pergeseran (kembali ke 0) daripada bikin kotak melayang terpisah jauh.
+    if (isFinite(gShiftCandidate) && Math.abs(gShiftCandidate) <= 20) {
+      gShiftOffset = gShiftCandidate;
+    }
   }
 
   var binMap = {};
@@ -3426,6 +3431,7 @@ function petaRender3DAll(allLetters) {
   var allCubes = [];
   var allFrameLines = [];
   var allLabels = [];
+  var allFloorRects = []; // 1 persegi lantai PER-POSISI, mengikuti depth aslinya masing-masing
 
   LAYOUT_ORDER.forEach(function(letter) {
     var segs = _peta3DGroups.filter(function(g){ return g.bin === letter; }).sort(function(a,b){return a.rowFrom-b.rowFrom;});
@@ -3461,7 +3467,8 @@ function petaRender3DAll(allLetters) {
     for (var xiO=0; xiO<nxR; xiO++) {
       var thisRow = rowNumFor(xiO);
       var needsFrontAlign = (letter === 'D' && thisRow === 25) || (letter === 'G' && thisRow >= 26);
-      yOffsetByX[xiO] = needsFrontAlign ? Math.max(0, mainSegDepth - nyByXR[xiO]) : 0;
+      var rawOffset = needsFrontAlign ? Math.max(0, mainSegDepth - nyByXR[xiO]) : 0;
+      yOffsetByX[xiO] = (isFinite(rawOffset) && rawOffset <= 10) ? rawOffset : 0; // pengaman nilai aneh
     }
 
     var filledSetR = {}, slotColorR = {};
@@ -3511,15 +3518,6 @@ function petaRender3DAll(allLetters) {
       for (var ci=0; ci<checks.length; ci++) if (isFilledAtR(checks[ci][0], checks[ci][1], fzL)) return true;
       return false;
     }
-    function zigSegObscured(fx, fy2, fzz) {
-      // Cek LENGKAP 8 titik (fx-1/fx × fy2/fy2+1 × fzz/fzz+1) — sebelumnya cuma cek fy2 saja
-      // (tidak cek fy2+1), itu yang bikin segmen di ujung/batas kadang salah lolos.
-      var xs = [fx-1, fx], ys = [fy2, fy2+1], zs = [fzz, fzz+1];
-      for (var xi=0; xi<2; xi++) for (var yi=0; yi<2; yi++) for (var zi=0; zi<2; zi++) {
-        if (isFilledAtR(xs[xi], ys[yi], zs[zi])) return true;
-      }
-      return false;
-    }
     for (var fx=0; fx<=nxR; fx++) {
       var offL = fx>0 ? (yOffsetByX[fx-1]||0) : Infinity;
       var offR = fx<nxR ? (yOffsetByX[fx]||0) : Infinity;
@@ -3529,7 +3527,9 @@ function petaRender3DAll(allLetters) {
       var fyEnd   = Math.max(topL, topR);
       var fLevel = Math.max(fx>0?nzByXR[fx-1]||0:0, fx<nxR?nzByXR[fx]||0:0);
       var fxScreen = screenXBoundary(fx);
-      // Tiang polos per-level, occlusion-check langsung
+      // Tiang polos per-level, occlusion-check langsung. Zigzag TIDAK ditampilkan di mode ALL
+      // (sudah 2x terbukti rawan "meledak" di transisi depth ekstrem, terutama rak I yang
+      // segmennya tumpang tindih) — zigzag lengkap tetap normal di mode 1-rak.
       for (var fy=fyStart; fy<=fyEnd; fy++) {
         var gYp = localToGlobalY(letter, fy);
         for (var fzL=0; fzL<fLevel; fzL++) {
@@ -3537,21 +3537,22 @@ function petaRender3DAll(allLetters) {
           allFrameLines.push({ type:'post', x:fxScreen, y:gYp, z0:fzL, z1:fzL+1 });
         }
       }
-      // Zigzag per segmen depth per level, occlusion-check 8-titik lengkap
-      for (var fy2=fyStart; fy2<fyEnd; fy2++) {
-        for (var fzz=0; fzz<fLevel; fzz++) {
-          if (zigSegObscured(fx, fy2, fzz)) continue;
-          var flip = fzz % 2 === 0;
-          var gYa = localToGlobalY(letter, fy2), gYb = localToGlobalY(letter, fy2+1);
-          var fromZ = flip ? fzz : fzz+1, toZ = flip ? fzz+1 : fzz;
-          allFrameLines.push({ type:'zigzag', x:fxScreen, ya:gYa, yb:gYb, za:fromZ, zb:toZ });
-        }
-      }
     }
     for (var xi3=0; xi3<nxR; xi3++) {
-      var frontGY = localToGlobalY(letter, (yOffsetByX[xi3]||0) + (nyByXR[xi3] || 0));
+      var offFront = (yOffsetByX[xi3]||0) + (nyByXR[xi3] || 0);
+      var offBack  = (yOffsetByX[xi3]||0);
+      var frontGY = localToGlobalY(letter, offFront);
+      var backGY  = localToGlobalY(letter, offBack);
       var lp = p3dIsoProject(screenX(xi3) + 0.5, frontGY, 0);
       allLabels.push({ x: lp.x, y: lp.y + 11, text: rowNumFor(xi3) });
+      // Lantai abu tua PER-POSISI — mengikuti depth asli posisi ini (bukan rata 1 kotak besar)
+      var sX = screenX(xi3);
+      allFloorRects.push({
+        p1: p3dIsoProject(sX, Math.min(frontGY,backGY), 0),
+        p2: p3dIsoProject(sX+1, Math.min(frontGY,backGY), 0),
+        p3: p3dIsoProject(sX+1, Math.max(frontGY,backGY), 0),
+        p4: p3dIsoProject(sX, Math.max(frontGY,backGY), 0)
+      });
     }
   });
 
@@ -3570,19 +3571,11 @@ function petaRender3DAll(allLetters) {
   var floorPts = [p3dIsoProject(0,0,0), p3dIsoProject(globalMaxX,0,0), p3dIsoProject(globalMaxX,globalMaxY,0), p3dIsoProject(0,globalMaxY,0)]
     .map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
   svgParts.push('<polygon points="'+floorPts+'" fill="#dde3ea" stroke="#94a3b8" stroke-width="1.5"/>');
-  // Strip abu tua HANYA di bawah footprint tiap rak (bukan area jalan/kosong)
-  LAYOUT_ORDER.forEach(function(letter) {
-    var m = rackMeta[letter];
-    var segsL = _peta3DGroups.filter(function(g){ return g.bin === letter; });
-    var originL = Math.min.apply(null, segsL.map(function(s){return s.rowFrom;}));
-    var maxRowL = Math.max.apply(null, segsL.map(function(s){return s.rowTo;}));
-    var nxL = maxRowL - originL + 1;
-    var xShiftMax = (letter === 'G') ? Math.abs(gShiftOffset) : 0;
-    var rackFloorPts = [
-      p3dIsoProject(0, m.yStart, 0), p3dIsoProject(nxL + xShiftMax, m.yStart, 0),
-      p3dIsoProject(nxL + xShiftMax, m.yEnd, 0), p3dIsoProject(0, m.yEnd, 0)
-    ].map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
-    svgParts.push('<polygon points="'+rackFloorPts+'" fill="#6b7280"/>');
+  // Lantai abu tua PER-POSISI (bukan 1 kotak besar rata) — otomatis pas mengikuti depth
+  // asli tiap posisi, jadi tidak akan ada kotak yang kelihatan "keluar" area abu lagi.
+  allFloorRects.forEach(function(r) {
+    var pts = [r.p1, r.p2, r.p3, r.p4].map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ');
+    svgParts.push('<polygon points="'+pts+'" fill="#6b7280"/>');
   });
 
   var combined = allCubes.map(function(c){ return { rtype:'cube', x:c.x, y:c.y, z:c.z, colorInfo:c.colorInfo, drawTop:c.drawTop, depth: c.x+c.y-c.z+0.9 }; });
