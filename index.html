@@ -3513,28 +3513,25 @@ function petaRender3DAll(allLetters) {
       }
     }
 
-    function postSegObscured(fx, fy, fzL) {
-      var checks = [[fx-1,fy-1],[fx-1,fy],[fx,fy-1],[fx,fy]];
-      for (var ci=0; ci<checks.length; ci++) if (isFilledAtR(checks[ci][0], checks[ci][1], fzL)) return true;
-      return false;
+    function postSegObscuredOwn(sx, fy, fzL, xi) {
+      // Cek occlusion pakai kolom ITU SENDIRI (xi) di kedua sisi (fy-1/fy) — bukan tetangga.
+      return isFilledAtR(xi, fy-1, fzL) || isFilledAtR(xi, fy, fzL);
     }
-    for (var fx=0; fx<=nxR; fx++) {
-      var offL = fx>0 ? (yOffsetByX[fx-1]||0) : Infinity;
-      var offR = fx<nxR ? (yOffsetByX[fx]||0) : Infinity;
-      var topL = fx>0 ? (offL + (nyByXR[fx-1]||0)) : -Infinity;
-      var topR = fx<nxR ? (offR + (nyByXR[fx]||0)) : -Infinity;
-      var fyStart = Math.min(offL, offR);
-      var fyEnd   = Math.max(topL, topR);
-      var fLevel = Math.max(fx>0?nzByXR[fx-1]||0:0, fx<nxR?nzByXR[fx]||0:0);
-      var fxScreen = screenXBoundary(fx);
-      // Tiang polos per-level, occlusion-check langsung. Zigzag TIDAK ditampilkan di mode ALL
-      // (sudah 2x terbukti rawan "meledak" di transisi depth ekstrem, terutama rak I yang
-      // segmennya tumpang tindih) — zigzag lengkap tetap normal di mode 1-rak.
-      for (var fy=fyStart; fy<=fyEnd; fy++) {
+    // Rangka digambar PER-POSISI (bukan per-batas gabungan) — tiap posisi gambar tiang
+    // kiri & kanannya SENDIRI, pakai depth/level MILIKNYA SENDIRI saja (tidak ambil MAX
+    // dari tetangga lagi). Ini menghilangkan ketergantungan ke tetangga yang sebelumnya
+    // bikin rangka rak mirror (B/D/F/H/I) selalu "mundur" dibanding kotaknya sendiri.
+    for (var xiF=0; xiF<nxR; xiF++) {
+      var offF = yOffsetByX[xiF] || 0;
+      var depthF = nyByXR[xiF] || 0;
+      var levelF = nzByXR[xiF] || 0;
+      var sxLeft = screenX(xiF), sxRight = screenX(xiF) + 1;
+      for (var fy=offF; fy<=offF+depthF; fy++) {
         var gYp = localToGlobalY(letter, fy);
-        for (var fzL=0; fzL<fLevel; fzL++) {
-          if (postSegObscured(fx, fy, fzL)) continue;
-          allFrameLines.push({ type:'post', x:fxScreen, y:gYp, z0:fzL, z1:fzL+1 });
+        for (var fzL=0; fzL<levelF; fzL++) {
+          if (postSegObscuredOwn(sxLeft, fy, fzL, xiF)) continue;
+          allFrameLines.push({ type:'post', x:sxLeft,  y:gYp, z0:fzL, z1:fzL+1 });
+          allFrameLines.push({ type:'post', x:sxRight, y:gYp, z0:fzL, z1:fzL+1 });
         }
       }
     }
