@@ -3505,7 +3505,11 @@ function petaRender3DAll(allLetters) {
         for (var x2=0; x2<nxR; x2++) {
           if (!existsAtR(x2,y2,z2)) continue;
           if (!isFilledAtR(x2,y2,z2)) continue;
-          var gY = localToGlobalY(letter, y2);
+          // Kotak berbentuk "span" [y,y+1] (asumsi maju). Untuk rak MIRROR arah kebalik —
+          // cell local y2 harus jatuh di GLOBAL [gY-1, gY], bukan [gY, gY+1]. Ini akar bug
+          // "box selalu mundur 1" yang sempat berulang kali muncul di rak B/D/F/H/I.
+          var gYraw = localToGlobalY(letter, y2);
+          var gY = isRev ? (gYraw - 1) : gYraw;
           var drawTop = !isFilledAtR(x2,y2,z2+1);
           var cInfo = p3dColorInfo(slotColorR[x2+'_'+y2+'_'+z2]);
           allCubes.push({ x:screenX(x2), y:gY, z:z2, colorInfo:cInfo, drawTop:drawTop });
@@ -3516,6 +3520,10 @@ function petaRender3DAll(allLetters) {
     function postSegObscuredOwn(sx, fy, fzL, xi) {
       // Cek occlusion pakai kolom ITU SENDIRI (xi) di kedua sisi (fy-1/fy) — bukan tetangga.
       return isFilledAtR(xi, fy-1, fzL) || isFilledAtR(xi, fy, fzL);
+    }
+    function zigSegObscuredOwn(xi, fy2, fzz) {
+      return isFilledAtR(xi, fy2, fzz) || isFilledAtR(xi, fy2, fzz+1) ||
+             isFilledAtR(xi, fy2+1, fzz) || isFilledAtR(xi, fy2+1, fzz+1);
     }
     // Rangka digambar PER-POSISI (bukan per-batas gabungan) — tiap posisi gambar tiang
     // kiri & kanannya SENDIRI, pakai depth/level MILIKNYA SENDIRI saja (tidak ambil MAX
@@ -3532,6 +3540,17 @@ function petaRender3DAll(allLetters) {
           if (postSegObscuredOwn(sxLeft, fy, fzL, xiF)) continue;
           allFrameLines.push({ type:'post', x:sxLeft,  y:gYp, z0:fzL, z1:fzL+1 });
           allFrameLines.push({ type:'post', x:sxRight, y:gYp, z0:fzL, z1:fzL+1 });
+        }
+      }
+      // Zigzag per segmen depth per level — juga per-posisi, pakai depth/level sendiri
+      for (var fy2=offF; fy2<offF+depthF; fy2++) {
+        for (var fzz=0; fzz<levelF; fzz++) {
+          if (zigSegObscuredOwn(xiF, fy2, fzz)) continue;
+          var flip = fzz % 2 === 0;
+          var gYa = localToGlobalY(letter, fy2), gYb = localToGlobalY(letter, fy2+1);
+          var fromZ = flip ? fzz : fzz+1, toZ = flip ? fzz+1 : fzz;
+          allFrameLines.push({ type:'zigzag', x:sxLeft,  ya:gYa, yb:gYb, za:fromZ, zb:toZ });
+          allFrameLines.push({ type:'zigzag', x:sxRight, ya:gYa, yb:gYb, za:fromZ, zb:toZ });
         }
       }
     }
