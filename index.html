@@ -3511,6 +3511,15 @@ function petaRender3DAll(allLetters) {
       for (var ci=0; ci<checks.length; ci++) if (isFilledAtR(checks[ci][0], checks[ci][1], fzL)) return true;
       return false;
     }
+    function zigSegObscured(fx, fy2, fzz) {
+      // Cek LENGKAP 8 titik (fx-1/fx × fy2/fy2+1 × fzz/fzz+1) — sebelumnya cuma cek fy2 saja
+      // (tidak cek fy2+1), itu yang bikin segmen di ujung/batas kadang salah lolos.
+      var xs = [fx-1, fx], ys = [fy2, fy2+1], zs = [fzz, fzz+1];
+      for (var xi=0; xi<2; xi++) for (var yi=0; yi<2; yi++) for (var zi=0; zi<2; zi++) {
+        if (isFilledAtR(xs[xi], ys[yi], zs[zi])) return true;
+      }
+      return false;
+    }
     for (var fx=0; fx<=nxR; fx++) {
       var offL = fx>0 ? (yOffsetByX[fx-1]||0) : Infinity;
       var offR = fx<nxR ? (yOffsetByX[fx]||0) : Infinity;
@@ -3520,13 +3529,22 @@ function petaRender3DAll(allLetters) {
       var fyEnd   = Math.max(topL, topR);
       var fLevel = Math.max(fx>0?nzByXR[fx-1]||0:0, fx<nxR?nzByXR[fx]||0:0);
       var fxScreen = screenXBoundary(fx);
-      // Tiang polos per-level, occlusion-check langsung (zigzag SENGAJA tidak ditampilkan
-      // di mode ALL — masih ada bug di titik batas terluar; zigzag tetap normal di mode 1-rak).
+      // Tiang polos per-level, occlusion-check langsung
       for (var fy=fyStart; fy<=fyEnd; fy++) {
         var gYp = localToGlobalY(letter, fy);
         for (var fzL=0; fzL<fLevel; fzL++) {
           if (postSegObscured(fx, fy, fzL)) continue;
-          allFrameLines.push({ x:fxScreen, y:gYp, z0:fzL, z1:fzL+1 });
+          allFrameLines.push({ type:'post', x:fxScreen, y:gYp, z0:fzL, z1:fzL+1 });
+        }
+      }
+      // Zigzag per segmen depth per level, occlusion-check 8-titik lengkap
+      for (var fy2=fyStart; fy2<fyEnd; fy2++) {
+        for (var fzz=0; fzz<fLevel; fzz++) {
+          if (zigSegObscured(fx, fy2, fzz)) continue;
+          var flip = fzz % 2 === 0;
+          var gYa = localToGlobalY(letter, fy2), gYb = localToGlobalY(letter, fy2+1);
+          var fromZ = flip ? fzz : fzz+1, toZ = flip ? fzz+1 : fzz;
+          allFrameLines.push({ type:'zigzag', x:fxScreen, ya:gYa, yb:gYb, za:fromZ, zb:toZ });
         }
       }
     }
@@ -3569,7 +3587,11 @@ function petaRender3DAll(allLetters) {
 
   var combined = allCubes.map(function(c){ return { rtype:'cube', x:c.x, y:c.y, z:c.z, colorInfo:c.colorInfo, drawTop:c.drawTop, depth: c.x+c.y-c.z+0.9 }; });
   allFrameLines.forEach(function(fl) {
-    combined.push({ rtype:'post', x:fl.x, y:fl.y, z0:fl.z0, z1:fl.z1, depth: fl.x + fl.y - fl.z0 - 0.5 });
+    if (fl.type === 'post') {
+      combined.push({ rtype:'post', x:fl.x, y:fl.y, z0:fl.z0, z1:fl.z1, depth: fl.x + fl.y - fl.z0 - 0.5 });
+    } else {
+      combined.push({ rtype:'zigzag', x:fl.x, ya:fl.ya, yb:fl.yb, za:fl.za, zb:fl.zb, depth: fl.x + (fl.ya+fl.yb)/2 - (fl.za+fl.zb)/2 - 0.5 });
+    }
   });
   combined.sort(function(a,b){ return a.depth - b.depth; });
 
@@ -3577,6 +3599,11 @@ function petaRender3DAll(allLetters) {
     if (item.rtype === 'post') {
       var pb = p3dIsoProject(item.x, item.y, item.z0), pt2 = p3dIsoProject(item.x, item.y, item.z1);
       svgParts.push('<line x1="'+pb.x.toFixed(1)+'" y1="'+pb.y.toFixed(1)+'" x2="'+pt2.x.toFixed(1)+'" y2="'+pt2.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="'+P3D_RACK_WIDTH+'"/>');
+      return;
+    }
+    if (item.rtype === 'zigzag') {
+      var za = p3dIsoProject(item.x, item.ya, item.za), zb = p3dIsoProject(item.x, item.yb, item.zb);
+      svgParts.push('<line x1="'+za.x.toFixed(1)+'" y1="'+za.y.toFixed(1)+'" x2="'+zb.x.toFixed(1)+'" y2="'+zb.y.toFixed(1)+'" stroke="'+P3D_RACK_COLOR+'" stroke-width="1.6"/>');
       return;
     }
     var result = p3dCubePolygons(item.x, item.y, item.z, item.colorInfo, { top:item.drawTop, faceX:true, faceY:true });
